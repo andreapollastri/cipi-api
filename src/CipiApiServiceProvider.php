@@ -21,7 +21,10 @@ class CipiApiServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
-        $this->loadRoutesFrom(__DIR__ . '/../routes/mcp.php');
+
+        if (class_exists(\Laravel\Mcp\Facades\Mcp::class)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/mcp.php');
+        }
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'cipi');
 
