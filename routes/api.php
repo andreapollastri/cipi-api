@@ -26,7 +26,7 @@ Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
     Route::post('/apps/{name}/deploy/unlock', [DeployController::class, 'unlock'])->middleware('ability:deploy-manage');
 
     // SSL
-    Route::post('/ssl/{name}', [SslController::class, 'install'])->middleware('ability:ssl-manage');
+    Route::post('/apps/{name}/ssl', [SslController::class, 'install'])->middleware('ability:ssl-manage');
 
     // Jobs
     Route::get('/jobs/{id}', [JobController::class, 'show']);

@@ -321,7 +321,7 @@
                 }
             }
         },
-        "/ssl/{name}": {
+        "/apps/{name}/ssl": {
             "post": {
                 "tags": ["SSL"],
                 "summary": "Install SSL",
