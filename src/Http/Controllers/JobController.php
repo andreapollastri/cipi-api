@@ -3,11 +3,16 @@
 namespace CipiApi\Http\Controllers;
 
 use CipiApi\Models\CipiJob;
+use CipiApi\Services\CipiOutputParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 
 class JobController extends Controller
 {
+    public function __construct(
+        protected CipiOutputParser $parser,
+    ) {}
+
     public function show(string $id): JsonResponse
     {
         $job = CipiJob::find($id);
@@ -24,8 +29,13 @@ class JobController extends Controller
         ];
 
         if (in_array($job->status, ['completed', 'failed'])) {
-            $data['output'] = $job->output;
             $data['exit_code'] = $job->exit_code;
+            $data['result'] = $this->parser->parse(
+                $job->type,
+                $job->output ?? '',
+                $job->status === 'completed',
+            );
+            $data['output'] = $job->output;
         }
 
         return response()->json(['data' => $data], 200);

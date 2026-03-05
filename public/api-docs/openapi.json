@@ -273,7 +273,7 @@
             "get": {
                 "tags": ["Jobs"],
                 "summary": "Get job status",
-                "description": "Poll a background job status. Any authenticated token can check any job. Returns status (pending, running, completed, failed) and output when finished.",
+                "description": "Poll a background job status. Any authenticated token can check any job. Returns status (pending, running, completed, failed). When finished, includes `result` (parsed structured data from Cipi CLI) and `output` (raw CLI output).",
                 "operationId": "jobShow",
                 "parameters": [
                     {
@@ -481,9 +481,23 @@
                                 "enum": ["pending", "running", "completed", "failed"],
                                 "example": "completed"
                             },
+                            "result": {
+                                "type": "object",
+                                "description": "Parsed structured result from Cipi CLI (only when status is completed or failed). Structure varies by job type.",
+                                "nullable": true,
+                                "oneOf": [
+                                    { "$ref": "#/components/schemas/JobResultAppCreate" },
+                                    { "$ref": "#/components/schemas/JobResultAppEdit" },
+                                    { "$ref": "#/components/schemas/JobResultAppDelete" },
+                                    { "$ref": "#/components/schemas/JobResultAliasCreate" },
+                                    { "$ref": "#/components/schemas/JobResultAliasDelete" },
+                                    { "$ref": "#/components/schemas/JobResultSslInstall" },
+                                    { "$ref": "#/components/schemas/JobResultError" }
+                                ]
+                            },
                             "output": {
                                 "type": "string",
-                                "description": "CLI output (only present when status is completed or failed)",
+                                "description": "Raw CLI output (only present when status is completed or failed)",
                                 "nullable": true
                             },
                             "exit_code": {
@@ -502,6 +516,84 @@
                             }
                         }
                     }
+                }
+            },
+            "JobResultAppCreate": {
+                "type": "object",
+                "description": "Result for app-create job",
+                "properties": {
+                    "app": { "type": "string", "example": "myapp" },
+                    "domain": { "type": "string", "example": "myapp.example.com" },
+                    "php": { "type": "string", "example": "8.4" },
+                    "home": { "type": "string", "example": "/home/myapp" },
+                    "ssh": {
+                        "type": "object",
+                        "properties": {
+                            "user": { "type": "string" },
+                            "password": { "type": "string" }
+                        }
+                    },
+                    "database": {
+                        "type": "object",
+                        "properties": {
+                            "user": { "type": "string" },
+                            "password": { "type": "string" }
+                        }
+                    },
+                    "deploy_key": { "type": "string", "description": "SSH public key for Git" },
+                    "webhook": { "type": "string", "format": "uri" },
+                    "webhook_token": { "type": "string" }
+                }
+            },
+            "JobResultAppEdit": {
+                "type": "object",
+                "description": "Result for app-edit job",
+                "properties": {
+                    "changes": {
+                        "type": "object",
+                        "additionalProperties": { "type": "string" },
+                        "example": { "php": "8.5", "branch": "develop" }
+                    },
+                    "message": { "type": "string", "example": "Nothing changed" }
+                }
+            },
+            "JobResultAppDelete": {
+                "type": "object",
+                "description": "Result for app-delete job",
+                "properties": {
+                    "app": { "type": "string" },
+                    "deleted": { "type": "boolean", "example": true }
+                }
+            },
+            "JobResultAliasCreate": {
+                "type": "object",
+                "description": "Result for alias add job",
+                "properties": {
+                    "alias": { "type": "string", "example": "www.example.com" },
+                    "app": { "type": "string", "example": "myapp" }
+                }
+            },
+            "JobResultAliasDelete": {
+                "type": "object",
+                "description": "Result for alias remove job",
+                "properties": {
+                    "alias": { "type": "string" },
+                    "app": { "type": "string" }
+                }
+            },
+            "JobResultSslInstall": {
+                "type": "object",
+                "description": "Result for ssl install job",
+                "properties": {
+                    "domain": { "type": "string" },
+                    "installed": { "type": "boolean", "example": true }
+                }
+            },
+            "JobResultError": {
+                "type": "object",
+                "description": "Result when job failed and parsing could not extract structured data",
+                "properties": {
+                    "error": { "type": "string", "description": "Error message from CLI" }
                 }
             },
             "ErrorResponse": {
