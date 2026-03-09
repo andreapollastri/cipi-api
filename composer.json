@@ -1,29 +1,36 @@
 {
-    "name": "andreapollastri/cipi-api",
-    "description": "Cipi API — REST API, MCP server, and Swagger docs for the Cipi server control panel",
-    "keywords": ["cipi", "laravel", "api", "mcp", "server", "deploy"],
-    "license": "MIT",
-    "type": "library",
-    "require": {
-        "php": "^8.2",
-        "laravel/framework": "^12.0",
-        "laravel/sanctum": "^4.0"
-    },
-    "suggest": {
-        "laravel/mcp": "Required for the MCP server endpoint (^0.1)"
-    },
-    "autoload": {
-        "psr-4": {
-            "CipiApi\\": "src/"
-        }
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "CipiApi\\CipiApiServiceProvider"
-            ]
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+  "name": "cipi-sh/api",
+  "description": "Cipi API — REST API, MCP server, and Swagger docs for the Cipi server control panel",
+  "keywords": [
+    "cipi",
+    "laravel",
+    "api",
+    "mcp",
+    "server",
+    "deploy"
+  ],
+  "license": "MIT",
+  "type": "library",
+  "require": {
+    "php": "^8.3",
+    "laravel/framework": "^12.0",
+    "laravel/sanctum": "^4.0"
+  },
+  "suggest": {
+    "laravel/mcp": "Required for the MCP server endpoint (^0.1)"
+  },
+  "autoload": {
+    "psr-4": {
+      "CipiApi\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "CipiApi\\CipiApiServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }
