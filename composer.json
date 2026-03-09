@@ -1,5 +1,5 @@
 {
-  "name": "cipi-sh/api",
+  "name": "cipi/api",
   "description": "Cipi API — REST API, MCP server, and Swagger docs for the Cipi server control panel",
   "keywords": [
     "cipi",
