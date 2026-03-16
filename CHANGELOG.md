@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.2] - 2026-03-16
+
+### Changed
+
+- Package renamed to `cipi/api` (from `andreapollastri/cipi-api`)
+- README: updated installation command and MCP tools table formatting
+
 ## [1.5.1] - 2026-03-16
 
 ### Added

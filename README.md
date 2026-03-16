@@ -10,7 +10,7 @@ Laravel package that exposes a REST API, an MCP server, and Swagger documentatio
 ## Installation
 
 ```bash
-composer require andreapollastri/cipi-api
+composer require cipi/api
 ```
 
 Publish the configuration and assets:
@@ -113,20 +113,20 @@ claude mcp list
 
 Once connected, the following tools are available to the AI agent:
 
-| Tool | Description |
-| --- | --- |
-| `AppList` | List all apps with domains, PHP versions, and aliases |
-| `AppShow` | Show details of a specific app |
-| `AppCreate` | Create a new app |
-| `AppEdit` | Edit an existing app |
-| `AppDelete` | Delete an app |
-| `AppDeploy` | Deploy an app |
-| `AppDeployRollback` | Rollback the last deploy |
-| `AppDeployUnlock` | Unlock a stuck deploy |
-| `AliasList` | List aliases for an app |
-| `AliasAdd` | Add an alias to an app |
-| `AliasRemove` | Remove an alias from an app |
-| `SslInstall` | Install an SSL certificate for an app |
+| Tool                | Description                                           |
+| ------------------- | ----------------------------------------------------- |
+| `AppList`           | List all apps with domains, PHP versions, and aliases |
+| `AppShow`           | Show details of a specific app                        |
+| `AppCreate`         | Create a new app                                      |
+| `AppEdit`           | Edit an existing app                                  |
+| `AppDelete`         | Delete an app                                         |
+| `AppDeploy`         | Deploy an app                                         |
+| `AppDeployRollback` | Rollback the last deploy                              |
+| `AppDeployUnlock`   | Unlock a stuck deploy                                 |
+| `AliasList`         | List aliases for an app                               |
+| `AliasAdd`          | Add an alias to an app                                |
+| `AliasRemove`       | Remove an alias from an app                           |
+| `SslInstall`        | Install an SSL certificate for an app                 |
 
 ## Configuration
 
