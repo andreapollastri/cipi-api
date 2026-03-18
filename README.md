@@ -30,7 +30,7 @@ php artisan cipi:token-create
 
 ## Features
 
-- **REST API** — CRUD for apps, aliases, SSL, and async jobs (`/api/*`), secured with Laravel Sanctum and token abilities.
+- **REST API** — CRUD for apps, aliases, databases, SSL, and async jobs (`/api/*`), secured with Laravel Sanctum and token abilities.
 - **MCP Server** — Model Context Protocol endpoint at `/mcp` for AI-powered integrations.
 - **Swagger Docs** — Interactive API reference available at `/docs`.
 - **Artisan Commands** — `cipi:token-create`, `cipi:token-list`, `cipi:token-revoke`.
@@ -117,7 +117,7 @@ Once connected, the following tools are available to the AI agent:
 | ------------------- | ----------------------------------------------------- |
 | `AppList`           | List all apps with domains, PHP versions, and aliases |
 | `AppShow`           | Show details of a specific app                        |
-| `AppCreate`         | Create a new app                                      |
+| `AppCreate`         | Create a new app (supports `--custom` for non-Laravel apps) |
 | `AppEdit`           | Edit an existing app                                  |
 | `AppDelete`         | Delete an app                                         |
 | `AppDeploy`         | Deploy an app                                         |
@@ -126,6 +126,12 @@ Once connected, the following tools are available to the AI agent:
 | `AliasList`         | List aliases for an app                               |
 | `AliasAdd`          | Add an alias to an app                                |
 | `AliasRemove`       | Remove an alias from an app                           |
+| `DbList`            | List all databases with their sizes                   |
+| `DbCreate`          | Create a new database with auto-generated credentials |
+| `DbDelete`          | Permanently delete a database                         |
+| `DbBackup`          | Create a compressed backup of a database              |
+| `DbRestore`         | Restore a database from a backup file                 |
+| `DbPassword`        | Regenerate database password and update `.env`        |
 | `SslInstall`        | Install an SSL certificate for an app                 |
 
 ## Configuration

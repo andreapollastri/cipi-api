@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-03-19
+
+### Added
+
+- Custom app support: `POST /api/apps` now accepts `custom` (boolean) and `docroot` (string) parameters to create non-Laravel apps with classic deploy (no zero-downtime)
+- Database management APIs:
+  - `GET /api/dbs` — list all databases (`dbs-view`)
+  - `POST /api/dbs` — create a database (`dbs-create`)
+  - `DELETE /api/dbs/{name}` — delete a database (`dbs-delete`)
+  - `POST /api/dbs/{name}/backup` — backup a database (`dbs-manage`)
+  - `POST /api/dbs/{name}/restore` — restore from backup (`dbs-manage`)
+  - `POST /api/dbs/{name}/password` — regenerate password (`dbs-manage`)
+- MCP tools: `DbList`, `DbCreate`, `DbDelete`, `DbBackup`, `DbRestore`, `DbPassword`
+- Output parsers for all database CLI commands
+- New token abilities: `dbs-view`, `dbs-create`, `dbs-delete`, `dbs-manage`
+
 ## [1.5.2] - 2026-03-16
 
 ### Changed
