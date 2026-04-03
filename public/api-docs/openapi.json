@@ -3,7 +3,7 @@
     "info": {
         "title": "Cipi API",
         "description": "REST API for Cipi Server Control Panel. Manage Laravel apps, domain aliases, SSL certificates, and MySQL databases.\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Write operations (create, edit, delete, SSL, alias add/remove) are dispatched as background jobs. The API responds immediately with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status.\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** An MCP (Model Context Protocol) server is available at `/mcp` with the same authentication.",
-        "version": "1.6.3",
+        "version": "1.6.4",
         "contact": {
             "name": "Cipi",
             "url": "https://cipi.sh"

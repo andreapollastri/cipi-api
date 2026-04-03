@@ -7,6 +7,7 @@ use CipiApi\Console\Commands\CipiTokenList;
 use CipiApi\Console\Commands\CipiTokenRevoke;
 use CipiApi\Console\Commands\SeedApiUser;
 use CipiApi\Exceptions\AppsJsonUnreadableException;
+use CipiApi\Exceptions\DisallowedCipiCommandException;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -33,10 +34,20 @@ class CipiApiServiceProvider extends ServiceProvider
             return Route::has('login') ? route('login') : '/';
         });
 
-        $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)->renderable(
+        $exceptionHandler = $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class);
+
+        $exceptionHandler->renderable(
             function (AppsJsonUnreadableException $e, $request) {
                 if ($request && ($request->expectsJson() || $request->is('api/*'))) {
                     return response()->json(['error' => $e->getMessage()], 503);
+                }
+            }
+        );
+
+        $exceptionHandler->renderable(
+            function (DisallowedCipiCommandException $e, $request) {
+                if ($request && ($request->expectsJson() || $request->is('api/*'))) {
+                    return response()->json(['error' => $e->getMessage()], 500);
                 }
             }
         );

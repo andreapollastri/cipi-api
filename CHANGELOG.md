@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.4] - 2026-04-03
+
+### Fixed
+
+- **Database CLI jobs:** `CipiCliService` now allows all `db` command prefixes (`db list`, `db create`, `db delete`, `db backup`, `db restore`, `db password`). They were missing from the sudo whitelist, so queued jobs failed immediately with “Command not allowed” and clients (including `cipi-cli db list`) saw `job failed` even when Cipi on the server was working.
+
+### Added
+
+- **`DisallowedCipiCommandException`:** thrown when application code tries to queue a Cipi CLI command whose prefix is not in the whitelist, so misconfiguration surfaces at dispatch time instead of as a perpetually failing job.
+- **`CipiJobService::dispatch()`** validates the command string with `CipiCliService::commandIsPermitted()` before creating the job record and dispatching `RunCipiCommand`.
+
+### Changed
+
+- **`CipiCliService`:** `ALLOWED_COMMANDS` is a documented `public const`; deploy matching uses the prefix `deploy ` (with a trailing space) so it does not collide with other commands starting with `deploy`.
+- **`CipiApiServiceProvider`:** registers a renderable handler so `DisallowedCipiCommandException` returns JSON `500` with an `error` message for `api/*` and JSON requests.
+- **OpenAPI / Swagger:** `public/api-docs/openapi.json` `info.version` set to **1.6.4** (aligned with this release).
+
 ## [1.6.3] - 2026-04-03
 
 ### Changed

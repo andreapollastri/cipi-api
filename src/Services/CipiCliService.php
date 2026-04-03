@@ -5,21 +5,36 @@ namespace CipiApi\Services;
 class CipiCliService
 {
     /**
-     * Allowed cipi subcommands that the API can invoke via sudo.
+     * Prefixes for `cipi <command>` strings that {@see CipiJobService} may queue.
+     * Must cover every command built for {@see RunCipiCommand} (controllers + MCP tools).
      */
-    private const ALLOWED_COMMANDS = [
+    public const ALLOWED_COMMANDS = [
         'app create',
         'app edit',
         'app delete',
-        'deploy',
+        'deploy ',
         'alias add',
         'alias remove',
         'ssl install',
+        'db list',
+        'db create',
+        'db delete',
+        'db backup',
+        'db restore',
+        'db password',
     ];
+
+    /**
+     * Whether the given command string is permitted (matches a whitelisted prefix).
+     */
+    public function commandIsPermitted(string $command): bool
+    {
+        return $this->isAllowed($command);
+    }
 
     public function run(string $command): array
     {
-        if (! $this->isAllowed($command)) {
+        if (! $this->commandIsPermitted($command)) {
             return [
                 'output' => "Command not allowed: {$command}",
                 'exit_code' => 1,
