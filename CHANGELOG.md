@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.7] - 2026-04-03
+
+### Added
+
+- **`CipiDatabaseListCliService`:** runs **`sudo cipi db list`** via `CipiCliService`, parses output with `CipiOutputParser` for `GET /api/dbs` and MCP `DbList`.
+
+### Changed
+
+- **`GET /api/dbs`:** Lists databases through the **Cipi server CLI** (synchronous), not a background job and not a direct MySQL connection from Laravel—secrets stay inside Cipi.
+
+### Removed
+
+- **`CipiMysqlDatabaseListService`**, **`CipiServerSecretsService`**, and related **`config/cipi.php`** keys (`mysql_list`, vault paths, `cipi_mysql_list` connection registration) introduced in intermediate iterations.
+
+## [1.6.6] - 2026-04-03
+
+### Fixed
+
+- **`GET /api/dbs` credentials:** The list endpoint no longer reuses the app `mysql` connection by default. A dedicated connection **`cipi_mysql_list`** is registered from `config/cipi.php` → **`mysql_list`**, with **`CIPI_MYSQL_LIST_PASSWORD`** (and optional host/user/socket) so MariaDB can be reached when `.env` has `root` and an empty `DB_PASSWORD` (which caused `Access denied … using password: NO` over `127.0.0.1`).
+
+### Changed
+
+- **`CIPI_MYSQL_LIST_CONNECTION`** default is now **`cipi_mysql_list`** (was `mysql`). Set `CIPI_MYSQL_LIST_CONNECTION=mysql` only if that connection already has a valid password and `SHOW DATABASES` rights.
+- **OpenAPI** `info.version` **1.6.6**.
+
 ## [1.6.5] - 2026-04-03
 
 ### Fixed

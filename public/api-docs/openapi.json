@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Cipi API",
-        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps, domain aliases, SSL certificates, and MySQL databases.\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias add/remove, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status. **Database listing** (`GET /api/dbs`) is synchronous (`200`) and reads from MySQL/MariaDB via the app connection.\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** An MCP (Model Context Protocol) server is available at `/mcp` with the same authentication.",
-        "version": "1.6.5",
+        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps, domain aliases, SSL certificates, and MySQL databases.\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias add/remove, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status. **Database listing** (`GET /api/dbs`) is synchronous (`200`) and runs `cipi db list` on the server (same as the Cipi CLI).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** An MCP (Model Context Protocol) server is available at `/mcp` with the same authentication.",
+        "version": "1.6.7",
         "contact": {
             "name": "Cipi",
             "url": "https://cipi.sh"
@@ -385,7 +385,7 @@
             "get": {
                 "tags": ["Databases"],
                 "summary": "List databases",
-                "description": "Returns all non-system MySQL/MariaDB databases and approximate sizes using the Laravel DB connection (`CIPI_MYSQL_LIST_CONNECTION`, default `mysql`). Same shape as `cipi-cli db list` expects for HTTP 200. Requires `dbs-view` ability.",
+                "description": "Runs `sudo cipi db list` on the server (synchronous), parses the CLI output, and returns the same JSON shape as `cipi-cli` expects for HTTP 200. Secrets stay inside Cipi; no MySQL password in the API `.env`. Requires `dbs-view` and a working `cipi` binary + sudo (same as other Cipi API jobs).",
                 "operationId": "dbList",
                 "responses": {
                     "200": {
@@ -1092,6 +1092,6 @@
         { "name": "Aliases", "description": "Domain alias management" },
         { "name": "SSL", "description": "SSL certificate management" },
         { "name": "Jobs", "description": "Background job status polling" },
-        { "name": "Databases", "description": "MySQL databases: list is synchronous (`GET /dbs`); create/delete/backup/restore/password are async jobs — poll `/jobs/{id}`" }
+        { "name": "Databases", "description": "MySQL databases: `GET /dbs` runs `cipi db list` (sync); create/delete/backup/restore/password are async jobs — poll `/jobs/{id}`" }
     ]
 }

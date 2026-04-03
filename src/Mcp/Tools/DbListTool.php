@@ -3,18 +3,18 @@
 namespace CipiApi\Mcp\Tools;
 
 use CipiApi\Exceptions\MysqlDatabaseListingUnavailableException;
-use CipiApi\Services\CipiMysqlDatabaseListService;
+use CipiApi\Services\CipiDatabaseListCliService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('List all MySQL/MariaDB databases with approximate sizes (same data as GET /api/dbs).')]
+#[Description('List all MySQL/MariaDB databases via `cipi db list` on the server (same as GET /api/dbs).')]
 class DbListTool extends Tool
 {
     public function __construct(
-        protected CipiMysqlDatabaseListService $mysqlDatabases,
+        protected CipiDatabaseListCliService $dbListCli,
     ) {}
 
     public function handle(Request $request): Response
@@ -24,7 +24,7 @@ class DbListTool extends Tool
         }
 
         try {
-            $rows = $this->mysqlDatabases->list();
+            $rows = $this->dbListCli->list();
         } catch (MysqlDatabaseListingUnavailableException $e) {
             return Response::text('Error: ' . $e->getMessage());
         }
