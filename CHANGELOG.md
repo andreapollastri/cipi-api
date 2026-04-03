@@ -2,15 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.3] - 2026-04-03
+
+### Changed
+
+- **OpenAPI / Swagger:** `public/api-docs/openapi.json` (served at `/docs`) now documents the database REST API (`/dbs`, backup, restore, password), request bodies, path parameters, and job `type` / `JobResultDb*` shapes for `GET /api/jobs/{id}`. Spec `info.version` set to **1.6.3**.
+- **README:** Swagger section notes what the OpenAPI spec covers (including databases and job `result` types).
+
 ## [1.6.2] - 2026-04-03
 
 ### Fixed
 
 - **Auth redirect without web login:** `CipiApiServiceProvider` registers `Authenticate::redirectUsing` so installs without a named `login` route no longer throw `Route [login] not defined` when Sanctum rejects a request. Unauthenticated `api/*` and JSON requests get a normal 401 flow; browser requests fall back to `/` (welcome) when no `login` route exists.
-
-### Changed
-
-- **OpenAPI / Swagger:** `public/api-docs/openapi.json` (served at `/docs`) now documents the database REST API (`/dbs`, backup, restore, password), request bodies, path parameters, and job `type` / `JobResultDb*` shapes for `GET /api/jobs/{id}`. Spec version aligned to 1.6.2.
 
 ## [1.6.1] - 2026-03-20
 
