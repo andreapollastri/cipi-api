@@ -4,6 +4,7 @@ namespace CipiApi\Http\Controllers;
 
 use CipiApi\Exceptions\MysqlDatabaseListingUnavailableException;
 use CipiApi\Models\CipiJob;
+use CipiApi\Services\CipiDatabaseEnginesCliService;
 use CipiApi\Services\CipiDatabaseListCliService;
 use CipiApi\Services\CipiJobService;
 use CipiApi\Services\CipiValidationService;
@@ -17,12 +18,32 @@ class DbController extends Controller
         protected CipiJobService $jobs,
         protected CipiValidationService $validator,
         protected CipiDatabaseListCliService $dbListCli,
+        protected CipiDatabaseEnginesCliService $dbEnginesCli,
     ) {}
 
-    public function list(): JsonResponse
+    public function engines(): JsonResponse
     {
         try {
-            return response()->json(['data' => $this->dbListCli->list()], 200);
+            return response()->json(['data' => $this->dbEnginesCli->list()], 200);
+        } catch (MysqlDatabaseListingUnavailableException $e) {
+            return response()->json(['error' => $e->getMessage()], 503);
+        }
+    }
+
+    public function list(Request $request): JsonResponse
+    {
+        $engine = $request->query('engine');
+        if (is_string($engine) && $engine !== '') {
+            if ($err = $this->validator->engineError($engine)) {
+                return response()->json(['error' => $err], 422);
+            }
+            $engine = $this->validator->normalizeEngine($engine);
+        } else {
+            $engine = null;
+        }
+
+        try {
+            return response()->json(['data' => $this->dbListCli->list($engine)], 200);
         } catch (MysqlDatabaseListingUnavailableException $e) {
             return response()->json(['error' => $e->getMessage()], 503);
         }
@@ -32,34 +53,68 @@ class DbController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
+            'engine' => 'nullable|string',
         ]);
 
         $name = $validated['name'];
         if ($err = $this->validator->usernameError($name)) {
             return response()->json(['error' => $err], 422);
         }
-        if ($this->hasPendingDbCreate($name)) {
+        if ($err = $this->validator->engineError($validated['engine'] ?? null)) {
+            return response()->json(['error' => $err], 422);
+        }
+
+        $engine = $this->validator->normalizeEngine($validated['engine'] ?? null);
+        $params = ['name' => $name];
+        if ($engine !== null) {
+            $params['engine'] = $engine;
+        }
+
+        if ($this->hasPendingDbCreate($name, $engine)) {
             return response()->json(['error' => "Database '{$name}' is already being created"], 409);
         }
 
         $command = 'db create --name=' . escapeshellarg($name);
-        $job = $this->jobs->dispatch('db-create', $command, ['name' => $name]);
+        if ($engine !== null) {
+            $command .= ' --engine=' . escapeshellarg($engine);
+        }
+        $job = $this->jobs->dispatch('db-create', $command, $params);
 
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
 
-    public function delete(string $name): JsonResponse
+    public function delete(Request $request, string $name): JsonResponse
     {
-        $command = 'db delete ' . escapeshellarg($name);
-        $job = $this->jobs->dispatch('db-delete', $command, ['name' => $name]);
+        $engine = $this->resolveEngineFromRequest($request);
+        if ($engine instanceof JsonResponse) {
+            return $engine;
+        }
+
+        $params = ['name' => $name];
+        $command = 'db delete ' . escapeshellarg($name) . ' --force';
+        if ($engine !== null) {
+            $params['engine'] = $engine;
+            $command .= ' --engine=' . escapeshellarg($engine);
+        }
+        $job = $this->jobs->dispatch('db-delete', $command, $params);
 
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
 
-    public function backup(string $name): JsonResponse
+    public function backup(Request $request, string $name): JsonResponse
     {
+        $engine = $this->resolveEngineFromRequest($request);
+        if ($engine instanceof JsonResponse) {
+            return $engine;
+        }
+
+        $params = ['name' => $name];
         $command = 'db backup ' . escapeshellarg($name);
-        $job = $this->jobs->dispatch('db-backup', $command, ['name' => $name]);
+        if ($engine !== null) {
+            $params['engine'] = $engine;
+            $command .= ' --engine=' . escapeshellarg($engine);
+        }
+        $job = $this->jobs->dispatch('db-backup', $command, $params);
 
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
@@ -68,32 +123,73 @@ class DbController extends Controller
     {
         $validated = $request->validate([
             'file' => 'required|string|max:512',
+            'engine' => 'nullable|string',
         ]);
 
         $file = $validated['file'];
         if (! preg_match('/^[a-zA-Z0-9_\-\/\.]+\.sql\.gz$/', $file)) {
             return response()->json(['error' => 'Invalid backup file path. Must be a .sql.gz file with safe characters.'], 422);
         }
+        if ($err = $this->validator->engineError($validated['engine'] ?? null)) {
+            return response()->json(['error' => $err], 422);
+        }
 
-        $command = 'db restore ' . escapeshellarg($name) . ' ' . escapeshellarg($file);
-        $job = $this->jobs->dispatch('db-restore', $command, ['name' => $name, 'file' => $file]);
+        $engine = $this->validator->normalizeEngine($validated['engine'] ?? null);
+        $params = ['name' => $name, 'file' => $file];
+        $command = 'db restore ' . escapeshellarg($name) . ' ' . escapeshellarg($file) . ' --force';
+        if ($engine !== null) {
+            $params['engine'] = $engine;
+            $command .= ' --engine=' . escapeshellarg($engine);
+        }
+        $job = $this->jobs->dispatch('db-restore', $command, $params);
 
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
 
-    public function password(string $name): JsonResponse
+    public function password(Request $request, string $name): JsonResponse
     {
+        $engine = $this->resolveEngineFromRequest($request);
+        if ($engine instanceof JsonResponse) {
+            return $engine;
+        }
+
+        $params = ['name' => $name];
         $command = 'db password ' . escapeshellarg($name);
-        $job = $this->jobs->dispatch('db-password', $command, ['name' => $name]);
+        if ($engine !== null) {
+            $params['engine'] = $engine;
+            $command .= ' --engine=' . escapeshellarg($engine);
+        }
+        $job = $this->jobs->dispatch('db-password', $command, $params);
 
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
 
-    protected function hasPendingDbCreate(string $name): bool
+    /**
+     * @return string|null|JsonResponse Normalized engine, null when omitted, or 422 response.
+     */
+    protected function resolveEngineFromRequest(Request $request): string|null|JsonResponse
     {
-        return CipiJob::where('type', 'db-create')
+        $raw = $request->input('engine', $request->query('engine'));
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+        if ($err = $this->validator->engineError($raw)) {
+            return response()->json(['error' => $err], 422);
+        }
+
+        return $this->validator->normalizeEngine($raw);
+    }
+
+    protected function hasPendingDbCreate(string $name, ?string $engine): bool
+    {
+        $query = CipiJob::where('type', 'db-create')
             ->whereIn('status', ['pending', 'running'])
-            ->where('params->name', $name)
-            ->exists();
+            ->where('params->name', $name);
+
+        if ($engine !== null) {
+            $query->where('params->engine', $engine);
+        }
+
+        return $query->exists();
     }
 }

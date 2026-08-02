@@ -11,9 +11,9 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Show details of a specific app. Returns domain, PHP version, branch, aliases, etc.')]
+#[Description('Show www/apex redirect status for an app (primary, apex, www host, redirect mode). Requires Cipi 4.8+.')]
 #[IsReadOnly]
-class AppShowTool extends Tool
+class WwwStatusTool extends Tool
 {
     public function __construct(
         protected CipiValidationService $validator,
@@ -29,15 +29,8 @@ class AppShowTool extends Tool
         if (! $this->validator->appExists($name)) {
             return Response::text("Error: App '{$name}' not found");
         }
-        $apps = $this->validator->getApps();
-        $app = $apps[$name];
-        $app['app'] = $name;
-        $app['suspended'] = $this->validator->isSuspended($name);
-        $app['basic_auth'] = $this->validator->isBasicAuthEnabled($name);
-        $app['engine'] = $this->validator->getAppEngine($name);
-        $app['www_redirect'] = $this->validator->getWwwRedirect($name);
-        $app['force_https'] = $this->validator->isForceHttps($name);
-        return Response::text(json_encode($app, JSON_PRETTY_PRINT));
+
+        return Response::text(json_encode($this->validator->getWwwStatus($name), JSON_PRETTY_PRINT));
     }
 
     public function schema(JsonSchema $schema): array

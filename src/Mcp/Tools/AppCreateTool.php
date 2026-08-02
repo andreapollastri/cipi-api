@@ -43,6 +43,8 @@ class AppCreateTool extends Tool
         }
         $php = $request->get('php', '8.4');
         $docroot = $request->get('docroot');
+        $engineRaw = $request->get('engine');
+        $engine = is_string($engineRaw) && $engineRaw !== '' ? $engineRaw : null;
 
         if ($err = $this->validator->usernameError($user ?? '')) {
             return Response::text("Error: {$err}");
@@ -52,6 +54,15 @@ class AppCreateTool extends Tool
         }
         if ($err = $this->validator->phpVersionError($php)) {
             return Response::text("Error: {$err}");
+        }
+        if ($err = $this->validator->engineError($engine)) {
+            return Response::text("Error: {$err}");
+        }
+        if ($engine !== null) {
+            $engine = $this->validator->normalizeEngine($engine);
+        }
+        if ($custom) {
+            $engine = null;
         }
         if (! $custom && ! $hasRepo) {
             return Response::text('Error: repository is required for Laravel apps (set custom=true for SFTP-only apps without Git)');
@@ -67,7 +78,7 @@ class AppCreateTool extends Tool
             return Response::text("Error: Domain '{$domain}' is already used by app '{$usedBy}'");
         }
 
-        $params = compact('user', 'domain', 'repository', 'branch', 'php', 'custom', 'docroot');
+        $params = compact('user', 'domain', 'repository', 'branch', 'php', 'custom', 'docroot', 'engine');
         $args = ['app create'];
         if ($custom) {
             $args[] = '--custom';
@@ -95,6 +106,7 @@ class AppCreateTool extends Tool
             'php' => $schema->string()->description('PHP version (default: 8.4)'),
             'custom' => $schema->boolean()->description('Create a custom (non-Laravel) app with classic deploy (no zero-downtime)'),
             'docroot' => $schema->string()->description('Document root path for custom apps (e.g. dist, www, public). Default: /'),
+            'engine' => $schema->string()->description('Database engine for Laravel apps: mariadb (default) or pgsql. Requires Cipi 4.8+ and installed engine.'),
         ];
     }
 }

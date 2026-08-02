@@ -24,13 +24,20 @@ use CipiApi\Mcp\Tools\AppUnsuspendTool;
 use CipiApi\Mcp\Tools\DbBackupTool;
 use CipiApi\Mcp\Tools\DbCreateTool;
 use CipiApi\Mcp\Tools\DbDeleteTool;
+use CipiApi\Mcp\Tools\DbEnginesTool;
 use CipiApi\Mcp\Tools\DbListTool;
 use CipiApi\Mcp\Tools\DbPasswordTool;
 use CipiApi\Mcp\Tools\DbRestoreTool;
 use CipiApi\Mcp\Tools\JobShowTool;
 use CipiApi\Mcp\Tools\ServerStatusTool;
 use CipiApi\Mcp\Tools\ServiceListTool;
+use CipiApi\Mcp\Tools\SslForceTool;
 use CipiApi\Mcp\Tools\SslInstallTool;
+use CipiApi\Mcp\Tools\WwwAddTool;
+use CipiApi\Mcp\Tools\WwwClearTool;
+use CipiApi\Mcp\Tools\WwwForceFromRootTool;
+use CipiApi\Mcp\Tools\WwwForceToRootTool;
+use CipiApi\Mcp\Tools\WwwStatusTool;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Attributes\Version;
@@ -38,16 +45,16 @@ use Laravel\Mcp\Server;
 
 #[Name('Cipi Server')]
 #[Version('1.0.0')]
-#[Instructions('Cipi server management: apps, aliases, databases, SSL, jobs, logs, and server status. Requires mcp-access token ability only.')]
+#[Instructions('Cipi server management: apps, aliases, www redirects, databases (MariaDB/PostgreSQL), SSL, jobs, logs, and server status. Requires mcp-access token ability only.')]
 class CipiServer extends Server
 {
     /**
      * Laravel MCP paginates tools/list (default 15). Cursor does not fetch further pages,
      * so expose all Cipi tools in a single list response.
      */
-    public int $defaultPaginationLength = 50;
+    public int $defaultPaginationLength = 60;
 
-    public int $maxPaginationLength = 50;
+    public int $maxPaginationLength = 60;
 
     protected array $tools = [
         AppListTool::class,
@@ -67,6 +74,12 @@ class CipiServer extends Server
         AliasListTool::class,
         AliasAddTool::class,
         AliasRemoveTool::class,
+        WwwStatusTool::class,
+        WwwAddTool::class,
+        WwwForceToRootTool::class,
+        WwwForceFromRootTool::class,
+        WwwClearTool::class,
+        DbEnginesTool::class,
         DbListTool::class,
         DbCreateTool::class,
         DbDeleteTool::class,
@@ -74,6 +87,7 @@ class CipiServer extends Server
         DbRestoreTool::class,
         DbPasswordTool::class,
         SslInstallTool::class,
+        SslForceTool::class,
         JobShowTool::class,
         AppLogsTool::class,
         ApiLogShowTool::class,

@@ -16,11 +16,16 @@ class CipiDatabaseListCliService
     ) {}
 
     /**
-     * @return list<array{name: string, size?: string}>
+     * @return list<array{name: string, size?: string, engine?: string, user?: string}>
      */
-    public function list(): array
+    public function list(?string $engine = null): array
     {
-        $result = $this->cli->run('db list');
+        $command = 'db list';
+        if ($engine !== null && $engine !== '') {
+            $command .= ' --engine=' . escapeshellarg($engine);
+        }
+
+        $result = $this->cli->run($command);
         if ($result['exit_code'] !== 0) {
             $detail = trim($result['output'] ?? '');
             $msg = $detail !== '' ? $detail : ('cipi db list exited with code ' . $result['exit_code']);

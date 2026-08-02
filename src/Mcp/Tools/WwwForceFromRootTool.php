@@ -3,19 +3,19 @@
 namespace CipiApi\Mcp\Tools;
 
 use CipiApi\Mcp\Support\McpArgValidator;
+use CipiApi\Services\CipiJobService;
 use CipiApi\Services\CipiValidationService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Show details of a specific app. Returns domain, PHP version, branch, aliases, etc.')]
-#[IsReadOnly]
-class AppShowTool extends Tool
+#[Description('Enable 301 redirect from domain → www.domain. Auto-adds missing alias. Async job. Requires Cipi 4.8+.')]
+class WwwForceFromRootTool extends Tool
 {
     public function __construct(
+        protected CipiJobService $jobs,
         protected CipiValidationService $validator,
     ) {}
 
@@ -29,15 +29,11 @@ class AppShowTool extends Tool
         if (! $this->validator->appExists($name)) {
             return Response::text("Error: App '{$name}' not found");
         }
-        $apps = $this->validator->getApps();
-        $app = $apps[$name];
-        $app['app'] = $name;
-        $app['suspended'] = $this->validator->isSuspended($name);
-        $app['basic_auth'] = $this->validator->isBasicAuthEnabled($name);
-        $app['engine'] = $this->validator->getAppEngine($name);
-        $app['www_redirect'] = $this->validator->getWwwRedirect($name);
-        $app['force_https'] = $this->validator->isForceHttps($name);
-        return Response::text(json_encode($app, JSON_PRETTY_PRINT));
+
+        $command = 'www force-from-root ' . escapeshellarg($name);
+        $job = $this->jobs->dispatch('www-force-from-root', $command, ['app' => $name]);
+
+        return Response::text("Job dispatched: {$job->id} (status: pending). Poll JobShow with id {$job->id} for result.");
     }
 
     public function schema(JsonSchema $schema): array

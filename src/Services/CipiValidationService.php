@@ -158,4 +158,102 @@ class CipiValidationService
 
         return $value === true || $value === 'true' || $value === 1 || $value === '1';
     }
+
+    public function isForceHttps(string $name): bool
+    {
+        $apps = $this->getApps();
+        $value = $apps[$name]['force_https'] ?? false;
+
+        return $value === true || $value === 'true' || $value === 1 || $value === '1';
+    }
+
+    /**
+     * Database engine for a Laravel app (`mariadb` / `pgsql`), or null when unset (e.g. custom apps).
+     */
+    public function getAppEngine(string $name): ?string
+    {
+        $apps = $this->getApps();
+        $engine = $apps[$name]['engine'] ?? null;
+        if (! is_string($engine) || $engine === '') {
+            return null;
+        }
+
+        return $this->normalizeEngine($engine) ?? $engine;
+    }
+
+    /**
+     * WWW redirect mode from apps.json: `to-root`, `from-root`, or null when none.
+     */
+    public function getWwwRedirect(string $name): ?string
+    {
+        $apps = $this->getApps();
+        $mode = $apps[$name]['www_redirect'] ?? null;
+        if ($mode === 'to-root' || $mode === 'from-root') {
+            return $mode;
+        }
+
+        return null;
+    }
+
+    /**
+     * Structured www/apex status for an app (derived from domain + www_redirect).
+     *
+     * @return array{app: string, primary: string, apex: string, www: string, redirect: string|null}
+     */
+    public function getWwwStatus(string $name): array
+    {
+        $primary = $this->getAppDomain($name) ?? '';
+        [$apex, $www] = $this->resolveWwwPair($primary);
+
+        return [
+            'app' => $name,
+            'primary' => $primary,
+            'apex' => $apex,
+            'www' => $www,
+            'redirect' => $this->getWwwRedirect($name),
+        ];
+    }
+
+    /**
+     * @return array{0: string, 1: string} [apex, www]
+     */
+    public function resolveWwwPair(string $primary): array
+    {
+        if (str_starts_with(strtolower($primary), 'www.')) {
+            $www = $primary;
+            $apex = substr($primary, 4);
+
+            return [$apex, $www];
+        }
+
+        return [$primary, $primary !== '' ? 'www.' . $primary : ''];
+    }
+
+    public function engineError(?string $engine): ?string
+    {
+        if ($engine === null || $engine === '') {
+            return null;
+        }
+        if ($this->normalizeEngine($engine) === null) {
+            return "Invalid engine '{$engine}'. Allowed: mariadb, pgsql";
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalize CLI/API engine aliases to `mariadb` or `pgsql`.
+     */
+    public function normalizeEngine(?string $engine): ?string
+    {
+        if ($engine === null || $engine === '') {
+            return null;
+        }
+
+        return match (strtolower(trim($engine))) {
+            'mariadb', 'mysql' => 'mariadb',
+            'pgsql', 'postgres', 'postgresql' => 'pgsql',
+            default => null,
+        };
+    }
 }

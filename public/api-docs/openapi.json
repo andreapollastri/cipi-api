@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Cipi API",
-        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps, domain aliases, SSL certificates, and MySQL databases.\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias add/remove, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status (any authenticated token). **Database listing** (`GET /api/dbs`) is synchronous (`200`) and runs `cipi db list` on the server (same as the Cipi CLI). **Server status** (`GET /api/status`) is synchronous and returns the same data as `cipi status` (requires `status-view`).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** An MCP (Model Context Protocol) server is available at `/mcp` with the same Bearer token. All MCP tools require only the `mcp-access` ability (REST per-route abilities do not apply). Tools include app/alias/database/SSL management, `JobShow`, `AppLogs`, `ApiLogShow`, `AppArtisan`, `ServerStatus`, and `ServiceList`.",
-        "version": "1.11.10",
+        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps, domain aliases, www/apex redirects, SSL certificates, and MariaDB/PostgreSQL databases (Cipi 4.8+ multi-engine).\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias/www, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status (any authenticated token). **Database listing** (`GET /api/dbs`) and **engines** (`GET /api/dbs/engines`) are synchronous. **Server status** (`GET /api/status`) is synchronous (requires `status-view`).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** Available at `/mcp` with `mcp-access` ability.",
+        "version": "1.12.0",
         "contact": {
             "name": "Cipi",
             "url": "https://cipi.sh"
@@ -26,7 +26,9 @@
     "paths": {
         "/apps": {
             "get": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "List apps",
                 "description": "List all apps on the server. Requires `apps-view` ability. Returns data synchronously.",
                 "operationId": "appList",
@@ -41,14 +43,20 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
                 }
             },
             "post": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Create app",
-                "description": "Create a new app. Validates domain/username synchronously (returns 409/422 on conflict). Dispatches CLI command as async job. Requires `apps-create` ability.\n\nFor **Laravel** apps, `repository` is required. For **custom** apps (`custom: true`), `repository` is optional: omit it (or send empty) to create an SFTP-only site with no Git deploy, matching [Cipi 4.4.4+](https://github.com/cipi-sh/cipi). When no repository is set, do not send `branch`.",
+                "description": "Create a new app. Validates domain/username synchronously (returns 409/422 on conflict). Dispatches CLI command as async job. Requires `apps-create` ability.\n\nFor **Laravel** apps, `repository` is required. Optional `engine` (`mariadb`|`pgsql`) selects the database engine ([Cipi 4.8+](https://cipi.sh/docs/infrastructure#db)). For **custom** apps (`custom: true`), `repository` is optional: omit it (or send empty) to create an SFTP-only site with no Git deploy. When no repository is set, do not send `branch`.",
                 "operationId": "appCreate",
                 "requestBody": {
                     "required": true,
@@ -71,21 +79,33 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "409": { "$ref": "#/components/responses/Conflict" },
-                    "422": { "$ref": "#/components/responses/ValidationError" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
                 }
             }
         },
         "/apps/{name}": {
             "get": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Show app",
                 "description": "Show app details. Returns data synchronously. Requires `apps-view` ability.",
                 "operationId": "appShow",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -98,18 +118,28 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             },
             "put": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Edit app",
-                "description": "Edit an app (PHP version, branch, repository, or primary domain). Validates app exists synchronously; validates domain format and uniqueness (excluding the current app's aliases) before dispatch. Changing the primary domain moves the old one to aliases, updates Nginx, `APP_URL`, webhooks, and re-issues SSL when applicable — requires [Cipi 4.6.2+](https://github.com/cipi-sh/cipi/releases/tag/4.6.2). Dispatches CLI command as async job. Requires `apps-edit` ability.",
+                "description": "Edit an app (PHP version, branch, repository, or primary domain). Validates app exists synchronously; validates domain format and uniqueness (excluding the current app's aliases) before dispatch. Changing the primary domain moves the old one to aliases, updates Nginx, `APP_URL`, webhooks, and re-issues SSL when applicable \u2014 requires [Cipi 4.6.2+](https://github.com/cipi-sh/cipi/releases/tag/4.6.2). Dispatches CLI command as async job. Requires `apps-edit` ability.",
                 "operationId": "appEdit",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "requestBody": {
                     "required": true,
@@ -132,20 +162,34 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "409": { "$ref": "#/components/responses/Conflict" },
-                    "422": { "$ref": "#/components/responses/ValidationError" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
                 }
             },
             "delete": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Delete app",
                 "description": "Permanently delete an app and all associated resources. Validates app exists synchronously. Dispatches CLI command as async job. Requires `apps-delete` ability.",
                 "operationId": "appDelete",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -158,20 +202,30 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/apps/{name}/suspend": {
             "post": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Suspend app",
                 "description": "Take an app offline without deleting it. Replaces the app's Nginx vhost with a generic static suspension page served as HTTP 503 (HTTPS included). Validates app exists synchronously and returns 409 if the app is already suspended. Dispatches CLI command as async job. Requires `apps-suspend` ability.",
                 "operationId": "appSuspend",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -184,21 +238,33 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "409": { "$ref": "#/components/responses/Conflict" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
                 }
             }
         },
         "/apps/{name}/unsuspend": {
             "post": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Unsuspend app",
                 "description": "Bring a suspended app back online by restoring its normal Nginx vhost. Validates app exists synchronously and returns 409 if the app is not suspended. Dispatches CLI command as async job. Requires `apps-suspend` ability.",
                 "operationId": "appUnsuspend",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -211,21 +277,33 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "409": { "$ref": "#/components/responses/Conflict" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
                 }
             }
         },
         "/apps/{name}/basicauth": {
             "get": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Basic auth status",
                 "description": "Show HTTP Basic Auth status for an app (enabled/disabled and configured usernames). Runs `cipi basicauth status` synchronously. Requires `apps-basicauth` ability.",
                 "operationId": "appBasicAuthStatus",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -238,21 +316,33 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
                 }
             }
         },
         "/apps/{name}/basicauth/enable": {
             "post": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Enable basic auth",
                 "description": "Protect an app with Nginx HTTP Basic Auth (RFC 7617). Optional `user` and `password`; when `password` is omitted Cipi auto-generates one and returns it once in the response. Regenerates the vhost and re-applies SSL when a certificate exists. Runs `cipi basicauth enable` synchronously. Requires `apps-basicauth` ability.",
                 "operationId": "appBasicAuthEnable",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "requestBody": {
                     "required": false,
@@ -275,22 +365,36 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "422": { "$ref": "#/components/responses/ValidationError" },
-                    "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
                 }
             }
         },
         "/apps/{name}/basicauth/disable": {
             "post": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Disable basic auth",
                 "description": "Remove HTTP Basic Auth from an app and restore the normal Nginx vhost. Validates app exists synchronously and returns 409 if basic auth is not enabled. Runs `cipi basicauth disable` synchronously. Requires `apps-basicauth` ability.",
                 "operationId": "appBasicAuthDisable",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -303,22 +407,36 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "409": { "$ref": "#/components/responses/Conflict" },
-                    "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
                 }
             }
         },
         "/apps/{name}/logs": {
             "get": {
-                "tags": ["Apps"],
+                "tags": [
+                    "Apps"
+                ],
                 "summary": "Read app logs",
                 "description": "Read paginated app log snapshots (nginx, PHP-FPM, Laravel, worker, deploy). Page 1 returns the most recent lines; higher pages return progressively older content. Matches [`cipi app logs`](https://cipi.sh/docs/apps#cli-app-logs) paths. Laravel logs are included when the app has `shared/storage/logs` (or for custom apps, all files under `/home/{app}/logs/`). Log text is redacted for common secrets. Requires `apps-view` ability.",
                 "operationId": "appLogsShow",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" },
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    },
                     {
                         "name": "type",
                         "in": "query",
@@ -326,7 +444,14 @@
                         "description": "Log type filter",
                         "schema": {
                             "type": "string",
-                            "enum": ["all", "nginx", "php", "worker", "deploy", "laravel"],
+                            "enum": [
+                                "all",
+                                "nginx",
+                                "php",
+                                "worker",
+                                "deploy",
+                                "laravel"
+                            ],
                             "default": "all"
                         }
                     },
@@ -365,22 +490,36 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "422": { "$ref": "#/components/responses/ValidationError" },
-                    "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
                 }
             }
         },
         "/apps/{name}/aliases": {
             "get": {
-                "tags": ["Aliases"],
+                "tags": [
+                    "Aliases"
+                ],
                 "summary": "List aliases",
                 "description": "List domain aliases for an app. Returns data synchronously. Requires `aliases-view` ability.",
                 "operationId": "aliasList",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -393,21 +532,33 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/apps/{name}/aliases/{alias}": {
             "post": {
-                "tags": ["Aliases"],
+                "tags": [
+                    "Aliases"
+                ],
                 "summary": "Add alias",
                 "description": "Add a domain alias to an app. Validates domain is not in use synchronously (returns 409). Dispatches CLI command as async job. Requires `aliases-create` ability.",
                 "operationId": "aliasCreate",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" },
-                    { "$ref": "#/components/parameters/AliasDomain" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    },
+                    {
+                        "$ref": "#/components/parameters/AliasDomain"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -420,21 +571,37 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" },
-                    "409": { "$ref": "#/components/responses/Conflict" },
-                    "422": { "$ref": "#/components/responses/ValidationError" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
                 }
             },
             "delete": {
-                "tags": ["Aliases"],
+                "tags": [
+                    "Aliases"
+                ],
                 "summary": "Remove alias",
                 "description": "Remove a domain alias from an app. Validates alias exists synchronously (returns 404). Dispatches CLI command as async job. Requires `aliases-delete` ability.",
                 "operationId": "aliasDelete",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" },
-                    { "$ref": "#/components/parameters/AliasDomain" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    },
+                    {
+                        "$ref": "#/components/parameters/AliasDomain"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -447,20 +614,210 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/www": {
+            "get": {
+                "tags": [
+                    "WWW"
+                ],
+                "summary": "WWW redirect status",
+                "description": "Show www/apex pair and canonical redirect mode for an app (`to-root`, `from-root`, or none). Reads apps.json synchronously. Requires `www-manage` ability. Cipi 4.8+.",
+                "operationId": "wwwStatus",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "WWW status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WwwStatusResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/www/add": {
+            "post": {
+                "tags": [
+                    "WWW"
+                ],
+                "summary": "Add www/apex alias",
+                "description": "Add the counterpart host (`www.` + apex, or apex when primary is already `www.*`) as an alias. Dispatches async job. Requires `www-manage`. Cipi 4.8+.",
+                "operationId": "wwwAdd",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Job dispatched",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobAcceptedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/www/force-to-root": {
+            "post": {
+                "tags": [
+                    "WWW"
+                ],
+                "summary": "Force www \u2192 apex",
+                "description": "Enable 301 redirect `www.domain` \u2192 `domain`. Auto-adds the missing alias. Dispatches async job. Requires `www-manage`. Cipi 4.8+.",
+                "operationId": "wwwForceToRoot",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Job dispatched",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobAcceptedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/www/force-from-root": {
+            "post": {
+                "tags": [
+                    "WWW"
+                ],
+                "summary": "Force apex \u2192 www",
+                "description": "Enable 301 redirect `domain` \u2192 `www.domain`. Auto-adds the missing alias. Dispatches async job. Requires `www-manage`. Cipi 4.8+.",
+                "operationId": "wwwForceFromRoot",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Job dispatched",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobAcceptedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/www/clear": {
+            "post": {
+                "tags": [
+                    "WWW"
+                ],
+                "summary": "Clear www redirect",
+                "description": "Clear canonical www/apex redirect state for an app. Dispatches async job. Requires `www-manage`. Cipi 4.8+.",
+                "operationId": "wwwClear",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Job dispatched",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobAcceptedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/apps/{name}/deploy": {
             "post": {
-                "tags": ["Deploy"],
+                "tags": [
+                    "Deploy"
+                ],
                 "summary": "Deploy app",
                 "description": "Trigger a deploy for an app. Validates app exists synchronously. Dispatches CLI command as async job. Requires `deploy-manage` ability.",
                 "operationId": "appDeploy",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -473,20 +830,30 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/apps/{name}/deploy/rollback": {
             "post": {
-                "tags": ["Deploy"],
+                "tags": [
+                    "Deploy"
+                ],
                 "summary": "Rollback deploy",
                 "description": "Rollback the last deploy of an app. Validates app exists synchronously. Dispatches CLI command as async job. Requires `deploy-manage` ability.",
                 "operationId": "appDeployRollback",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -499,20 +866,30 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/apps/{name}/deploy/unlock": {
             "post": {
-                "tags": ["Deploy"],
+                "tags": [
+                    "Deploy"
+                ],
                 "summary": "Unlock deploy",
                 "description": "Unlock a stuck deploy for an app. Validates app exists synchronously. Dispatches CLI command as async job. Requires `deploy-manage` ability.",
                 "operationId": "appDeployUnlock",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -525,20 +902,30 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/apps/{name}/ssl": {
             "post": {
-                "tags": ["SSL"],
+                "tags": [
+                    "SSL"
+                ],
                 "summary": "Install SSL",
                 "description": "Install Let's Encrypt SSL certificate for an app. Validates app exists synchronously. Dispatches CLI command as async job. Requires `ssl-manage` ability.",
                 "operationId": "sslInstall",
                 "parameters": [
-                    { "$ref": "#/components/parameters/AppName" }
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -551,15 +938,59 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/ssl/force": {
+            "post": {
+                "tags": [
+                    "SSL"
+                ],
+                "summary": "Force HTTPS redirect",
+                "description": "Re-apply HTTP \u2192 HTTPS redirect for an app that already has a Let's Encrypt certificate (no new issuance). Sets `force_https` in apps.json. Dispatches async job. Requires `ssl-manage`. Cipi 4.8+.",
+                "operationId": "sslForce",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Job dispatched",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobAcceptedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/jobs/{id}": {
             "get": {
-                "tags": ["Jobs"],
+                "tags": [
+                    "Jobs"
+                ],
                 "summary": "Get job status",
                 "description": "Poll a background job status. Any authenticated token can check any job (typically after receiving a `job_id` from another endpoint). Returns status (pending, running, completed, failed). When finished, includes `result` (parsed structured data from Cipi CLI) and `output` (raw CLI output).",
                 "operationId": "jobShow",
@@ -586,14 +1017,20 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "404": { "$ref": "#/components/responses/NotFound" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
             }
         },
         "/status": {
             "get": {
-                "tags": ["Server"],
+                "tags": [
+                    "Server"
+                ],
                 "summary": "Server status",
                 "description": "Returns the same structured data as `cipi status`: system info, resources (CPU, memory, disk), services, PHP pools, and app count. Runs `sudo cipi status` on the host and parses CLI output; falls back to direct host reads when sudo is unavailable. Requires `status-view` ability and `cipi status` in `cipi-api` sudoers (see Cipi `setup.sh`).",
                 "operationId": "statusShow",
@@ -608,16 +1045,65 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/dbs/engines": {
+            "get": {
+                "tags": [
+                    "Databases"
+                ],
+                "summary": "List database engines",
+                "description": "Runs `sudo cipi db engines` and returns installed engines (MariaDB / PostgreSQL), ports, and the server-wide default. Synchronous. Requires `dbs-view`. Cipi 4.8+.",
+                "operationId": "dbEngines",
+                "responses": {
+                    "200": {
+                        "description": "Engine list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DbEnginesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "description": "CLI unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         },
         "/dbs": {
             "get": {
-                "tags": ["Databases"],
+                "tags": [
+                    "Databases"
+                ],
                 "summary": "List databases",
-                "description": "Runs `sudo cipi db list` on the server (synchronous), parses the CLI output, and returns the same JSON shape as `cipi-cli` expects for HTTP 200. Secrets stay inside Cipi; no MySQL password in the API `.env`. Requires `dbs-view` and a working `cipi` binary + sudo (same as other Cipi API jobs).",
+                "description": "Runs `sudo cipi db list` on the server (synchronous). Optional query `engine=mariadb|pgsql` filters to one engine (Cipi 4.8+). Returns engine, name, user, and size when available. Requires `dbs-view`.",
                 "operationId": "dbList",
                 "responses": {
                     "200": {
@@ -630,8 +1116,12 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
                     "503": {
                         "description": "MySQL listing unavailable (wrong DB driver, connection error, or missing privileges)",
                         "content": {
@@ -639,18 +1129,37 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "error": { "type": "string" }
+                                        "error": {
+                                            "type": "string"
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
+                },
+                "parameters": [
+                    {
+                        "name": "engine",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by database engine (Cipi 4.8+)",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "mariadb",
+                                "pgsql"
+                            ]
+                        }
+                    }
+                ]
             },
             "post": {
-                "tags": ["Databases"],
+                "tags": [
+                    "Databases"
+                ],
                 "summary": "Create database",
-                "description": "Create a MySQL database and user. Validates `name` as a Cipi username. Returns 409 if a create job for the same name is already pending or running. Dispatches async job. Requires `dbs-create` ability.",
+                "description": "Create a database and user. Optional `engine` (`mariadb`|`pgsql`) selects the engine (server default when omitted). Requires Cipi 4.8+ for PostgreSQL. Validates `name` as a Cipi username. Returns 409 if a create job for the same name is already pending. Dispatches async job. Requires `dbs-create`.",
                 "operationId": "dbCreate",
                 "requestBody": {
                     "required": true,
@@ -673,21 +1182,46 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "409": { "$ref": "#/components/responses/Conflict" },
-                    "422": { "$ref": "#/components/responses/ValidationError" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
                 }
             }
         },
         "/dbs/{name}": {
             "delete": {
-                "tags": ["Databases"],
+                "tags": [
+                    "Databases"
+                ],
                 "summary": "Delete database",
-                "description": "Delete a database. Dispatches async job. Requires `dbs-delete` ability.",
+                "description": "Delete a database. Optional query/body `engine` when the name exists on multiple engines (Cipi 4.8+). Dispatches async job. Requires `dbs-delete`.",
                 "operationId": "dbDelete",
                 "parameters": [
-                    { "$ref": "#/components/parameters/DbName" }
+                    {
+                        "$ref": "#/components/parameters/DbName"
+                    },
+                    {
+                        "name": "engine",
+                        "in": "query",
+                        "required": false,
+                        "description": "Database engine when ambiguous",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "mariadb",
+                                "pgsql"
+                            ]
+                        }
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -700,19 +1234,27 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
                 }
             }
         },
         "/dbs/{name}/backup": {
             "post": {
-                "tags": ["Databases"],
+                "tags": [
+                    "Databases"
+                ],
                 "summary": "Backup database",
-                "description": "Create a compressed SQL backup. Dispatches async job. Requires `dbs-manage` ability.",
+                "description": "Create a compressed SQL backup. Optional `engine` in JSON body (Cipi 4.8+). Dispatches async job. Requires `dbs-manage`.",
                 "operationId": "dbBackup",
                 "parameters": [
-                    { "$ref": "#/components/parameters/DbName" }
+                    {
+                        "$ref": "#/components/parameters/DbName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -725,19 +1267,37 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DbEngineRequest"
+                            }
+                        }
+                    }
                 }
             }
         },
         "/dbs/{name}/restore": {
             "post": {
-                "tags": ["Databases"],
+                "tags": [
+                    "Databases"
+                ],
                 "summary": "Restore database",
-                "description": "Restore from a `.sql.gz` backup file path on the server. Dispatches async job. Requires `dbs-manage` ability.",
+                "description": "Restore from a `.sql.gz` backup file path on the server. Optional `engine` (Cipi 4.8+). Dispatches async job. Requires `dbs-manage`.",
                 "operationId": "dbRestore",
                 "parameters": [
-                    { "$ref": "#/components/parameters/DbName" }
+                    {
+                        "$ref": "#/components/parameters/DbName"
+                    }
                 ],
                 "requestBody": {
                     "required": true,
@@ -760,20 +1320,30 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" },
-                    "422": { "$ref": "#/components/responses/ValidationError" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
                 }
             }
         },
         "/dbs/{name}/password": {
             "post": {
-                "tags": ["Databases"],
+                "tags": [
+                    "Databases"
+                ],
                 "summary": "Regenerate database password",
-                "description": "Regenerate the MySQL user password for this database. Dispatches async job. Requires `dbs-manage` ability.",
+                "description": "Regenerate the database user password. Optional `engine` in JSON body (Cipi 4.8+). Dispatches async job. Requires `dbs-manage`.",
                 "operationId": "dbPassword",
                 "parameters": [
-                    { "$ref": "#/components/parameters/DbName" }
+                    {
+                        "$ref": "#/components/parameters/DbName"
+                    }
                 ],
                 "responses": {
                     "202": {
@@ -786,8 +1356,22 @@
                             }
                         }
                     },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/Forbidden" }
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DbEngineRequest"
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -825,7 +1409,7 @@
                 "name": "name",
                 "in": "path",
                 "required": true,
-                "description": "Database name (Cipi username rules: lowercase, 3–32 chars)",
+                "description": "Database name (Cipi username rules: lowercase, 3\u201332 chars)",
                 "schema": {
                     "type": "string",
                     "pattern": "^[a-z][a-z0-9]{2,31}$"
@@ -835,7 +1419,10 @@
         "schemas": {
             "AppCreateRequest": {
                 "type": "object",
-                "required": ["user", "domain"],
+                "required": [
+                    "user",
+                    "domain"
+                ],
                 "properties": {
                     "user": {
                         "type": "string",
@@ -863,7 +1450,15 @@
                     "php": {
                         "type": "string",
                         "description": "PHP version",
-                        "enum": ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"],
+                        "enum": [
+                            "7.4",
+                            "8.0",
+                            "8.1",
+                            "8.2",
+                            "8.3",
+                            "8.4",
+                            "8.5"
+                        ],
                         "default": "8.4",
                         "example": "8.4"
                     },
@@ -877,6 +1472,15 @@
                         "type": "string",
                         "description": "Document root path for custom apps (e.g. dist, public). Default: /",
                         "example": "public"
+                    },
+                    "engine": {
+                        "type": "string",
+                        "enum": [
+                            "mariadb",
+                            "pgsql"
+                        ],
+                        "description": "Database engine for Laravel apps (ignored for custom apps). Requires Cipi 4.8+ and an installed engine. Server default when omitted.",
+                        "example": "pgsql"
                     }
                 }
             },
@@ -885,7 +1489,15 @@
                 "properties": {
                     "php": {
                         "type": "string",
-                        "enum": ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"],
+                        "enum": [
+                            "7.4",
+                            "8.0",
+                            "8.1",
+                            "8.2",
+                            "8.3",
+                            "8.4",
+                            "8.5"
+                        ],
                         "description": "PHP version"
                     },
                     "branch": {
@@ -912,19 +1524,73 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "app": { "type": "string", "example": "myapp" },
-                                "domain": { "type": "string", "example": "myapp.example.com" },
-                                "php": { "type": "string", "example": "8.4" },
-                                "branch": { "type": "string", "example": "main" },
-                                "repository": { "type": "string", "example": "git@github.com:user/repo.git" },
+                                "app": {
+                                    "type": "string",
+                                    "example": "myapp"
+                                },
+                                "domain": {
+                                    "type": "string",
+                                    "example": "myapp.example.com"
+                                },
+                                "php": {
+                                    "type": "string",
+                                    "example": "8.4"
+                                },
+                                "branch": {
+                                    "type": "string",
+                                    "example": "main"
+                                },
+                                "repository": {
+                                    "type": "string",
+                                    "example": "git@github.com:user/repo.git"
+                                },
                                 "aliases": {
                                     "type": "array",
-                                    "items": { "type": "string" },
-                                    "example": ["www.myapp.example.com"]
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "example": [
+                                        "www.myapp.example.com"
+                                    ]
                                 },
-                                "suspended": { "type": "boolean", "example": false },
-                                "basic_auth": { "type": "boolean", "example": false, "description": "Whether HTTP Basic Auth is enabled on the app vhost" },
-                                "created_at": { "type": "string", "example": "2026-03-05" }
+                                "suspended": {
+                                    "type": "boolean",
+                                    "example": false
+                                },
+                                "basic_auth": {
+                                    "type": "boolean",
+                                    "example": false,
+                                    "description": "Whether HTTP Basic Auth is enabled on the app vhost"
+                                },
+                                "created_at": {
+                                    "type": "string",
+                                    "example": "2026-03-05"
+                                },
+                                "engine": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [
+                                        "mariadb",
+                                        "pgsql"
+                                    ],
+                                    "description": "App database engine (Laravel apps; null for custom / unset)",
+                                    "example": "mariadb"
+                                },
+                                "www_redirect": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [
+                                        "to-root",
+                                        "from-root"
+                                    ],
+                                    "description": "Canonical www redirect mode (null when none). Cipi 4.8+.",
+                                    "example": "to-root"
+                                },
+                                "force_https": {
+                                    "type": "boolean",
+                                    "description": "Whether HTTP \u2192 HTTPS redirect is forced (set by ssl install/force). Cipi 4.8+.",
+                                    "example": true
+                                }
                             }
                         }
                     }
@@ -936,18 +1602,62 @@
                     "data": {
                         "type": "object",
                         "properties": {
-                            "app": { "type": "string" },
-                            "domain": { "type": "string" },
-                            "php": { "type": "string" },
-                            "branch": { "type": "string" },
-                            "repository": { "type": "string" },
+                            "app": {
+                                "type": "string"
+                            },
+                            "domain": {
+                                "type": "string"
+                            },
+                            "php": {
+                                "type": "string"
+                            },
+                            "branch": {
+                                "type": "string"
+                            },
+                            "repository": {
+                                "type": "string"
+                            },
                             "aliases": {
                                 "type": "array",
-                                "items": { "type": "string" }
+                                "items": {
+                                    "type": "string"
+                                }
                             },
-                            "suspended": { "type": "boolean" },
-                            "basic_auth": { "type": "boolean", "description": "Whether HTTP Basic Auth is enabled on the app vhost" },
-                            "created_at": { "type": "string" }
+                            "suspended": {
+                                "type": "boolean"
+                            },
+                            "basic_auth": {
+                                "type": "boolean",
+                                "description": "Whether HTTP Basic Auth is enabled on the app vhost"
+                            },
+                            "created_at": {
+                                "type": "string"
+                            },
+                            "engine": {
+                                "type": "string",
+                                "nullable": true,
+                                "enum": [
+                                    "mariadb",
+                                    "pgsql"
+                                ],
+                                "description": "App database engine (Laravel apps; null for custom / unset)",
+                                "example": "mariadb"
+                            },
+                            "www_redirect": {
+                                "type": "string",
+                                "nullable": true,
+                                "enum": [
+                                    "to-root",
+                                    "from-root"
+                                ],
+                                "description": "Canonical www redirect mode (null when none). Cipi 4.8+.",
+                                "example": "to-root"
+                            },
+                            "force_https": {
+                                "type": "boolean",
+                                "description": "Whether HTTP \u2192 HTTPS redirect is forced (set by ssl install/force). Cipi 4.8+.",
+                                "example": true
+                            }
                         }
                     }
                 }
@@ -958,22 +1668,46 @@
                     "data": {
                         "type": "object",
                         "properties": {
-                            "app": { "type": "string", "example": "myapp" },
-                            "type": { "type": "string", "example": "nginx" },
-                            "page": { "type": "integer", "example": 1 },
-                            "per_page": { "type": "integer", "example": 50 },
+                            "app": {
+                                "type": "string",
+                                "example": "myapp"
+                            },
+                            "type": {
+                                "type": "string",
+                                "example": "nginx"
+                            },
+                            "page": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "per_page": {
+                                "type": "integer",
+                                "example": 50
+                            },
                             "available_types": {
                                 "type": "array",
-                                "items": { "type": "string" },
-                                "example": ["nginx", "php", "laravel", "worker", "deploy"]
+                                "items": {
+                                    "type": "string"
+                                },
+                                "example": [
+                                    "nginx",
+                                    "php",
+                                    "laravel",
+                                    "worker",
+                                    "deploy"
+                                ]
                             },
                             "files": {
                                 "type": "array",
-                                "items": { "$ref": "#/components/schemas/AppLogFile" }
+                                "items": {
+                                    "$ref": "#/components/schemas/AppLogFile"
+                                }
                             },
                             "warnings": {
                                 "type": "array",
-                                "items": { "type": "string" },
+                                "items": {
+                                    "type": "string"
+                                },
                                 "description": "Present when high-risk patterns were detected after redaction"
                             }
                         }
@@ -983,15 +1717,34 @@
             "AppLogFile": {
                 "type": "object",
                 "properties": {
-                    "path": { "type": "string", "example": "/home/myapp/logs/nginx-access.log" },
-                    "total_lines": { "type": "integer", "example": 1200 },
-                    "page": { "type": "integer", "example": 1 },
-                    "per_page": { "type": "integer", "example": 50 },
-                    "total_pages": { "type": "integer", "example": 24 },
+                    "path": {
+                        "type": "string",
+                        "example": "/home/myapp/logs/nginx-access.log"
+                    },
+                    "total_lines": {
+                        "type": "integer",
+                        "example": 1200
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "example": 24
+                    },
                     "lines": {
                         "type": "array",
-                        "items": { "type": "string" },
-                        "example": ["127.0.0.1 - - [30/Jun/2026:10:00:00 +0000] \"GET / HTTP/1.1\" 200"]
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "127.0.0.1 - - [30/Jun/2026:10:00:00 +0000] \"GET / HTTP/1.1\" 200"
+                        ]
                     }
                 }
             },
@@ -1001,11 +1754,18 @@
                     "data": {
                         "type": "object",
                         "properties": {
-                            "enabled": { "type": "boolean", "example": true },
+                            "enabled": {
+                                "type": "boolean",
+                                "example": true
+                            },
                             "users": {
                                 "type": "array",
-                                "items": { "type": "string" },
-                                "example": ["admin"]
+                                "items": {
+                                    "type": "string"
+                                },
+                                "example": [
+                                    "admin"
+                                ]
                             }
                         }
                     }
@@ -1032,13 +1792,26 @@
                     "data": {
                         "type": "object",
                         "properties": {
-                            "app": { "type": "string", "example": "myapp" },
-                            "enabled": { "type": "boolean", "example": true },
-                            "user": { "type": "string", "example": "admin" },
+                            "app": {
+                                "type": "string",
+                                "example": "myapp"
+                            },
+                            "enabled": {
+                                "type": "boolean",
+                                "example": true
+                            },
+                            "user": {
+                                "type": "string",
+                                "example": "admin"
+                            },
                             "users": {
                                 "type": "array",
-                                "items": { "type": "string" },
-                                "example": ["admin"]
+                                "items": {
+                                    "type": "string"
+                                },
+                                "example": [
+                                    "admin"
+                                ]
                             },
                             "password": {
                                 "type": "string",
@@ -1055,8 +1828,14 @@
                     "data": {
                         "type": "object",
                         "properties": {
-                            "app": { "type": "string", "example": "myapp" },
-                            "enabled": { "type": "boolean", "example": false }
+                            "app": {
+                                "type": "string",
+                                "example": "myapp"
+                            },
+                            "enabled": {
+                                "type": "boolean",
+                                "example": false
+                            }
                         }
                     }
                 }
@@ -1066,8 +1845,13 @@
                 "properties": {
                     "data": {
                         "type": "array",
-                        "items": { "type": "string" },
-                        "example": ["www.myapp.example.com", "alias.example.com"]
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "www.myapp.example.com",
+                            "alias.example.com"
+                        ]
                     }
                 }
             },
@@ -1080,10 +1864,25 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "name": { "type": "string", "example": "myapp" },
+                                "engine": {
+                                    "type": "string",
+                                    "enum": [
+                                        "mariadb",
+                                        "pgsql"
+                                    ],
+                                    "example": "mariadb"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "example": "myapp"
+                                },
+                                "user": {
+                                    "type": "string",
+                                    "example": "myapp"
+                                },
                                 "size": {
                                     "type": "string",
-                                    "description": "Approximate size from information_schema",
+                                    "description": "Approximate size",
                                     "example": "12.34 MB"
                                 }
                             }
@@ -1100,11 +1899,31 @@
                             "system": {
                                 "type": "object",
                                 "properties": {
-                                    "ip": { "type": "string", "nullable": true, "example": "178.104.60.48" },
-                                    "hostname": { "type": "string", "nullable": true, "example": "deploying" },
-                                    "os": { "type": "string", "nullable": true, "example": "Ubuntu 24.04.3 LTS" },
-                                    "uptime": { "type": "string", "nullable": true, "example": "up 12 weeks, 3 days, 22 hours, 8 minutes" },
-                                    "cipi": { "type": "string", "nullable": true, "example": "4.6.2" }
+                                    "ip": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "178.104.60.48"
+                                    },
+                                    "hostname": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "deploying"
+                                    },
+                                    "os": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "Ubuntu 24.04.3 LTS"
+                                    },
+                                    "uptime": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "up 12 weeks, 3 days, 22 hours, 8 minutes"
+                                    },
+                                    "cipi": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "4.6.2"
+                                    }
                                 }
                             },
                             "resources": {
@@ -1113,26 +1932,51 @@
                                     "cpu": {
                                         "type": "object",
                                         "properties": {
-                                            "usage_percent": { "type": "integer", "nullable": true, "example": 4 }
+                                            "usage_percent": {
+                                                "type": "integer",
+                                                "nullable": true,
+                                                "example": 4
+                                            }
                                         }
                                     },
                                     "memory": {
                                         "type": "object",
                                         "nullable": true,
                                         "properties": {
-                                            "used_mb": { "type": "integer", "example": 1549 },
-                                            "total_mb": { "type": "integer", "example": 3819 },
-                                            "usage_percent": { "type": "integer", "example": 40 }
+                                            "used_mb": {
+                                                "type": "integer",
+                                                "example": 1549
+                                            },
+                                            "total_mb": {
+                                                "type": "integer",
+                                                "example": 3819
+                                            },
+                                            "usage_percent": {
+                                                "type": "integer",
+                                                "example": 40
+                                            }
                                         }
                                     },
                                     "disk": {
                                         "type": "object",
                                         "nullable": true,
                                         "properties": {
-                                            "display": { "type": "string", "example": "18G/38G (49%)" },
-                                            "used": { "type": "string", "example": "18G" },
-                                            "total": { "type": "string", "example": "38G" },
-                                            "usage_percent": { "type": "integer", "example": 49 }
+                                            "display": {
+                                                "type": "string",
+                                                "example": "18G/38G (49%)"
+                                            },
+                                            "used": {
+                                                "type": "string",
+                                                "example": "18G"
+                                            },
+                                            "total": {
+                                                "type": "string",
+                                                "example": "38G"
+                                            },
+                                            "usage_percent": {
+                                                "type": "integer",
+                                                "example": 49
+                                            }
                                         }
                                     }
                                 }
@@ -1141,7 +1985,10 @@
                                 "type": "object",
                                 "additionalProperties": {
                                     "type": "string",
-                                    "enum": ["running", "stopped"]
+                                    "enum": [
+                                        "running",
+                                        "stopped"
+                                    ]
                                 },
                                 "example": {
                                     "nginx": "running",
@@ -1155,37 +2002,72 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "version": { "type": "string", "example": "8.5" },
-                                        "status": { "type": "string", "enum": ["running"] },
-                                        "pools": { "type": "integer", "example": 11 }
+                                        "version": {
+                                            "type": "string",
+                                            "example": "8.5"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "running"
+                                            ]
+                                        },
+                                        "pools": {
+                                            "type": "integer",
+                                            "example": 11
+                                        }
                                     }
                                 }
                             },
-                            "apps": { "type": "integer", "example": 9 }
+                            "apps": {
+                                "type": "integer",
+                                "example": 9
+                            }
                         }
                     }
                 }
             },
             "DbCreateRequest": {
                 "type": "object",
-                "required": ["name"],
+                "required": [
+                    "name"
+                ],
                 "properties": {
                     "name": {
                         "type": "string",
                         "description": "Database name (must satisfy Cipi username rules; invalid names return 422 with `{ \"error\": \"...\" }`)",
                         "example": "mydb"
+                    },
+                    "engine": {
+                        "type": "string",
+                        "enum": [
+                            "mariadb",
+                            "pgsql"
+                        ],
+                        "description": "Database engine (server default when omitted). Cipi 4.8+.",
+                        "example": "pgsql"
                     }
                 }
             },
             "DbRestoreRequest": {
                 "type": "object",
-                "required": ["file"],
+                "required": [
+                    "file"
+                ],
                 "properties": {
                     "file": {
                         "type": "string",
                         "maxLength": 512,
                         "description": "Path to a `.sql.gz` backup on the server (safe path characters only). Invalid paths return 422 with `{ \"error\": \"...\" }`.",
                         "example": "/home/cipi/backups/mydb_2026-03-19.sql.gz"
+                    },
+                    "engine": {
+                        "type": "string",
+                        "enum": [
+                            "mariadb",
+                            "pgsql"
+                        ],
+                        "description": "Database engine when ambiguous. Cipi 4.8+."
                     }
                 }
             },
@@ -1200,7 +2082,9 @@
                     },
                     "status": {
                         "type": "string",
-                        "enum": ["pending"],
+                        "enum": [
+                            "pending"
+                        ],
                         "example": "pending"
                     }
                 }
@@ -1217,12 +2101,40 @@
                             },
                             "type": {
                                 "type": "string",
-                                "enum": ["app-create", "app-edit", "app-delete", "app-suspend", "app-unsuspend", "app-deploy", "app-deploy-rollback", "app-deploy-unlock", "alias-create", "alias-delete", "ssl-install", "db-list", "db-create", "db-delete", "db-backup", "db-restore", "db-password"],
+                                "enum": [
+                                    "app-create",
+                                    "app-edit",
+                                    "app-delete",
+                                    "app-suspend",
+                                    "app-unsuspend",
+                                    "app-deploy",
+                                    "app-deploy-rollback",
+                                    "app-deploy-unlock",
+                                    "alias-create",
+                                    "alias-delete",
+                                    "ssl-install",
+                                    "db-list",
+                                    "db-create",
+                                    "db-delete",
+                                    "db-backup",
+                                    "db-restore",
+                                    "db-password",
+                                    "www-add",
+                                    "www-force-to-root",
+                                    "www-force-from-root",
+                                    "www-clear",
+                                    "ssl-force"
+                                ],
                                 "example": "app-create"
                             },
                             "status": {
                                 "type": "string",
-                                "enum": ["pending", "running", "completed", "failed"],
+                                "enum": [
+                                    "pending",
+                                    "running",
+                                    "completed",
+                                    "failed"
+                                ],
                                 "example": "completed"
                             },
                             "result": {
@@ -1230,24 +2142,60 @@
                                 "description": "Parsed structured result from Cipi CLI (only when status is completed or failed). Structure varies by job type.",
                                 "nullable": true,
                                 "oneOf": [
-                                    { "$ref": "#/components/schemas/JobResultAppCreate" },
-                                    { "$ref": "#/components/schemas/JobResultAppEdit" },
-                                    { "$ref": "#/components/schemas/JobResultAppDelete" },
-                                    { "$ref": "#/components/schemas/JobResultAppSuspend" },
-                                    { "$ref": "#/components/schemas/JobResultAppUnsuspend" },
-                                    { "$ref": "#/components/schemas/JobResultAppDeploy" },
-                                    { "$ref": "#/components/schemas/JobResultAppDeployRollback" },
-                                    { "$ref": "#/components/schemas/JobResultAppDeployUnlock" },
-                                    { "$ref": "#/components/schemas/JobResultAliasCreate" },
-                                    { "$ref": "#/components/schemas/JobResultAliasDelete" },
-                                    { "$ref": "#/components/schemas/JobResultSslInstall" },
-                                    { "$ref": "#/components/schemas/JobResultDbList" },
-                                    { "$ref": "#/components/schemas/JobResultDbCreate" },
-                                    { "$ref": "#/components/schemas/JobResultDbDelete" },
-                                    { "$ref": "#/components/schemas/JobResultDbBackup" },
-                                    { "$ref": "#/components/schemas/JobResultDbRestore" },
-                                    { "$ref": "#/components/schemas/JobResultDbPassword" },
-                                    { "$ref": "#/components/schemas/JobResultError" }
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppCreate"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppEdit"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppDelete"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppSuspend"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppUnsuspend"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppDeploy"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppDeployRollback"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAppDeployUnlock"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAliasCreate"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultAliasDelete"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultSslInstall"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultDbList"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultDbCreate"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultDbDelete"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultDbBackup"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultDbRestore"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultDbPassword"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/JobResultError"
+                                    }
                                 ]
                             },
                             "output": {
@@ -1277,27 +2225,55 @@
                 "type": "object",
                 "description": "Result for app-create job",
                 "properties": {
-                    "app": { "type": "string", "example": "myapp" },
-                    "domain": { "type": "string", "example": "myapp.example.com" },
-                    "php": { "type": "string", "example": "8.4" },
-                    "home": { "type": "string", "example": "/home/myapp" },
+                    "app": {
+                        "type": "string",
+                        "example": "myapp"
+                    },
+                    "domain": {
+                        "type": "string",
+                        "example": "myapp.example.com"
+                    },
+                    "php": {
+                        "type": "string",
+                        "example": "8.4"
+                    },
+                    "home": {
+                        "type": "string",
+                        "example": "/home/myapp"
+                    },
                     "ssh": {
                         "type": "object",
                         "properties": {
-                            "user": { "type": "string" },
-                            "password": { "type": "string" }
+                            "user": {
+                                "type": "string"
+                            },
+                            "password": {
+                                "type": "string"
+                            }
                         }
                     },
                     "database": {
                         "type": "object",
                         "properties": {
-                            "user": { "type": "string" },
-                            "password": { "type": "string" }
+                            "user": {
+                                "type": "string"
+                            },
+                            "password": {
+                                "type": "string"
+                            }
                         }
                     },
-                    "deploy_key": { "type": "string", "description": "SSH public key for Git (may be absent for SFTP-only custom apps without a repository)" },
-                    "webhook": { "type": "string", "format": "uri" },
-                    "webhook_token": { "type": "string" }
+                    "deploy_key": {
+                        "type": "string",
+                        "description": "SSH public key for Git (may be absent for SFTP-only custom apps without a repository)"
+                    },
+                    "webhook": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "webhook_token": {
+                        "type": "string"
+                    }
                 }
             },
             "JobResultAppEdit": {
@@ -1306,82 +2282,141 @@
                 "properties": {
                     "changes": {
                         "type": "object",
-                        "additionalProperties": { "type": "string" },
-                        "example": { "php": "8.5", "branch": "develop", "domain": "new.example.com" }
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "example": {
+                            "php": "8.5",
+                            "branch": "develop",
+                            "domain": "new.example.com"
+                        }
                     },
-                    "message": { "type": "string", "example": "Nothing changed" }
+                    "message": {
+                        "type": "string",
+                        "example": "Nothing changed"
+                    }
                 }
             },
             "JobResultAppDelete": {
                 "type": "object",
                 "description": "Result for app-delete job",
                 "properties": {
-                    "app": { "type": "string" },
-                    "deleted": { "type": "boolean", "example": true }
+                    "app": {
+                        "type": "string"
+                    },
+                    "deleted": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultAppSuspend": {
                 "type": "object",
                 "description": "Result for app-suspend job",
                 "properties": {
-                    "app": { "type": "string", "example": "myapp" },
-                    "suspended": { "type": "boolean", "example": true }
+                    "app": {
+                        "type": "string",
+                        "example": "myapp"
+                    },
+                    "suspended": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultAppUnsuspend": {
                 "type": "object",
                 "description": "Result for app-unsuspend job",
                 "properties": {
-                    "app": { "type": "string", "example": "myapp" },
-                    "suspended": { "type": "boolean", "example": false }
+                    "app": {
+                        "type": "string",
+                        "example": "myapp"
+                    },
+                    "suspended": {
+                        "type": "boolean",
+                        "example": false
+                    }
                 }
             },
             "JobResultAppDeploy": {
                 "type": "object",
                 "description": "Result for app-deploy job",
                 "properties": {
-                    "app": { "type": "string", "example": "myapp" },
-                    "deployed": { "type": "boolean", "example": true }
+                    "app": {
+                        "type": "string",
+                        "example": "myapp"
+                    },
+                    "deployed": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultAppDeployRollback": {
                 "type": "object",
                 "description": "Result for app-deploy-rollback job",
                 "properties": {
-                    "app": { "type": "string", "example": "myapp" },
-                    "rolled_back": { "type": "boolean", "example": true }
+                    "app": {
+                        "type": "string",
+                        "example": "myapp"
+                    },
+                    "rolled_back": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultAppDeployUnlock": {
                 "type": "object",
                 "description": "Result for app-deploy-unlock job",
                 "properties": {
-                    "app": { "type": "string", "example": "myapp" },
-                    "unlocked": { "type": "boolean", "example": true }
+                    "app": {
+                        "type": "string",
+                        "example": "myapp"
+                    },
+                    "unlocked": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultAliasCreate": {
                 "type": "object",
                 "description": "Result for alias add job",
                 "properties": {
-                    "alias": { "type": "string", "example": "www.example.com" },
-                    "app": { "type": "string", "example": "myapp" }
+                    "alias": {
+                        "type": "string",
+                        "example": "www.example.com"
+                    },
+                    "app": {
+                        "type": "string",
+                        "example": "myapp"
+                    }
                 }
             },
             "JobResultAliasDelete": {
                 "type": "object",
                 "description": "Result for alias remove job",
                 "properties": {
-                    "alias": { "type": "string" },
-                    "app": { "type": "string" }
+                    "alias": {
+                        "type": "string"
+                    },
+                    "app": {
+                        "type": "string"
+                    }
                 }
             },
             "JobResultSslInstall": {
                 "type": "object",
                 "description": "Result for ssl install job",
                 "properties": {
-                    "domain": { "type": "string" },
-                    "installed": { "type": "boolean", "example": true }
+                    "domain": {
+                        "type": "string"
+                    },
+                    "installed": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultDbList": {
@@ -1393,8 +2428,15 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "name": { "type": "string", "example": "mydb" },
-                                "size": { "type": "string", "description": "Human-readable size when reported by CLI", "example": "12M" }
+                                "name": {
+                                    "type": "string",
+                                    "example": "mydb"
+                                },
+                                "size": {
+                                    "type": "string",
+                                    "description": "Human-readable size when reported by CLI",
+                                    "example": "12M"
+                                }
                             }
                         }
                     }
@@ -1404,50 +2446,87 @@
                 "type": "object",
                 "description": "Result for db-create job",
                 "properties": {
-                    "database": { "type": "string", "example": "mydb" },
-                    "user": { "type": "string" },
-                    "password": { "type": "string" },
-                    "url": { "type": "string", "description": "Connection URL when provided by CLI" }
+                    "database": {
+                        "type": "string",
+                        "example": "mydb"
+                    },
+                    "user": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Connection URL when provided by CLI"
+                    }
                 }
             },
             "JobResultDbDelete": {
                 "type": "object",
                 "description": "Result for db-delete job",
                 "properties": {
-                    "database": { "type": "string", "example": "mydb" },
-                    "deleted": { "type": "boolean", "example": true }
+                    "database": {
+                        "type": "string",
+                        "example": "mydb"
+                    },
+                    "deleted": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultDbBackup": {
                 "type": "object",
                 "description": "Result for db-backup job",
                 "properties": {
-                    "file": { "type": "string", "description": "Path to the generated .sql.gz backup" },
-                    "backed_up": { "type": "boolean", "example": true }
+                    "file": {
+                        "type": "string",
+                        "description": "Path to the generated .sql.gz backup"
+                    },
+                    "backed_up": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultDbRestore": {
                 "type": "object",
                 "description": "Result for db-restore job",
                 "properties": {
-                    "database": { "type": "string" },
-                    "restored": { "type": "boolean", "example": true }
+                    "database": {
+                        "type": "string"
+                    },
+                    "restored": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultDbPassword": {
                 "type": "object",
                 "description": "Result for db-password job",
                 "properties": {
-                    "user": { "type": "string" },
-                    "password": { "type": "string" },
-                    "password_changed": { "type": "boolean", "example": true }
+                    "user": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "password_changed": {
+                        "type": "boolean",
+                        "example": true
+                    }
                 }
             },
             "JobResultError": {
                 "type": "object",
                 "description": "Result when job failed and parsing could not extract structured data",
                 "properties": {
-                    "error": { "type": "string", "description": "Error message from CLI" }
+                    "error": {
+                        "type": "string",
+                        "description": "Error message from CLI"
+                    }
                 }
             },
             "ErrorResponse": {
@@ -1456,6 +2535,94 @@
                     "error": {
                         "type": "string",
                         "description": "Error message"
+                    }
+                }
+            },
+            "DbEngineRequest": {
+                "type": "object",
+                "properties": {
+                    "engine": {
+                        "type": "string",
+                        "enum": [
+                            "mariadb",
+                            "pgsql"
+                        ],
+                        "description": "Database engine (Cipi 4.8+)"
+                    }
+                }
+            },
+            "DbEnginesResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "default": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "mariadb"
+                            },
+                            "engines": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "engine": {
+                                            "type": "string",
+                                            "example": "mariadb"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "example": "installed"
+                                        },
+                                        "port": {
+                                            "type": "integer",
+                                            "nullable": true,
+                                            "example": 3306
+                                        },
+                                        "default": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "WwwStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "app": {
+                                "type": "string",
+                                "example": "myapp"
+                            },
+                            "primary": {
+                                "type": "string",
+                                "example": "example.com"
+                            },
+                            "apex": {
+                                "type": "string",
+                                "example": "example.com"
+                            },
+                            "www": {
+                                "type": "string",
+                                "example": "www.example.com"
+                            },
+                            "redirect": {
+                                "type": "string",
+                                "nullable": true,
+                                "enum": [
+                                    "to-root",
+                                    "from-root"
+                                ],
+                                "example": "to-root"
+                            }
+                        }
                     }
                 }
             }
@@ -1468,7 +2635,10 @@
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "message": { "type": "string", "example": "Unauthenticated." }
+                                "message": {
+                                    "type": "string",
+                                    "example": "Unauthenticated."
+                                }
                             }
                         }
                     }
@@ -1481,7 +2651,10 @@
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "message": { "type": "string", "example": "Invalid ability provided." }
+                                "message": {
+                                    "type": "string",
+                                    "example": "Invalid ability provided."
+                                }
                             }
                         }
                     }
@@ -1514,12 +2687,16 @@
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "message": { "type": "string" },
+                                "message": {
+                                    "type": "string"
+                                },
                                 "errors": {
                                     "type": "object",
                                     "additionalProperties": {
                                         "type": "array",
-                                        "items": { "type": "string" }
+                                        "items": {
+                                            "type": "string"
+                                        }
                                     }
                                 }
                             }
@@ -1540,12 +2717,37 @@
         }
     },
     "tags": [
-        { "name": "Apps", "description": "App management" },
-        { "name": "Deploy", "description": "App deploy management" },
-        { "name": "Aliases", "description": "Domain alias management" },
-        { "name": "SSL", "description": "SSL certificate management" },
-        { "name": "Jobs", "description": "Background job status polling" },
-        { "name": "Databases", "description": "MySQL databases: `GET /dbs` runs `cipi db list` (sync); create/delete/backup/restore/password are async jobs — poll `/jobs/{id}`" },
-        { "name": "Server", "description": "Host status (`GET /status`, same data as `cipi status`)" }
+        {
+            "name": "Apps",
+            "description": "App management"
+        },
+        {
+            "name": "Deploy",
+            "description": "App deploy management"
+        },
+        {
+            "name": "Aliases",
+            "description": "Domain alias management"
+        },
+        {
+            "name": "WWW",
+            "description": "www/apex aliases and canonical redirects (Cipi 4.8+) \u2014 ability `www-manage`"
+        },
+        {
+            "name": "SSL",
+            "description": "Let's Encrypt SSL install and force HTTPS redirect \u2014 ability `ssl-manage`"
+        },
+        {
+            "name": "Jobs",
+            "description": "Background job status polling"
+        },
+        {
+            "name": "Databases",
+            "description": "MariaDB / PostgreSQL databases (Cipi 4.8+ multi-engine): `GET /dbs/engines`, `GET /dbs` (sync); create/delete/backup/restore/password are async jobs"
+        },
+        {
+            "name": "Server",
+            "description": "Host status (`GET /status`, same data as `cipi status`)"
+        }
     ]
 }

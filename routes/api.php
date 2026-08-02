@@ -9,6 +9,7 @@ use CipiApi\Http\Controllers\DeployController;
 use CipiApi\Http\Controllers\JobController;
 use CipiApi\Http\Controllers\SslController;
 use CipiApi\Http\Controllers\StatusController;
+use CipiApi\Http\Controllers\WwwController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
@@ -30,6 +31,13 @@ Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
     Route::post('/apps/{name}/aliases/{alias}', [AliasController::class, 'create'])->middleware('ability:aliases-create');
     Route::delete('/apps/{name}/aliases/{alias}', [AliasController::class, 'delete'])->middleware('ability:aliases-delete');
 
+    // WWW / apex redirects (Cipi 4.8+)
+    Route::get('/apps/{name}/www', [WwwController::class, 'status'])->middleware('ability:www-manage');
+    Route::post('/apps/{name}/www/add', [WwwController::class, 'add'])->middleware('ability:www-manage');
+    Route::post('/apps/{name}/www/force-to-root', [WwwController::class, 'forceToRoot'])->middleware('ability:www-manage');
+    Route::post('/apps/{name}/www/force-from-root', [WwwController::class, 'forceFromRoot'])->middleware('ability:www-manage');
+    Route::post('/apps/{name}/www/clear', [WwwController::class, 'clear'])->middleware('ability:www-manage');
+
     // Deploy
     Route::post('/apps/{name}/deploy', [DeployController::class, 'deploy'])->middleware('ability:deploy-manage');
     Route::post('/apps/{name}/deploy/rollback', [DeployController::class, 'rollback'])->middleware('ability:deploy-manage');
@@ -37,8 +45,10 @@ Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
 
     // SSL
     Route::post('/apps/{name}/ssl', [SslController::class, 'install'])->middleware('ability:ssl-manage');
+    Route::post('/apps/{name}/ssl/force', [SslController::class, 'force'])->middleware('ability:ssl-manage');
 
     // Databases
+    Route::get('/dbs/engines', [DbController::class, 'engines'])->middleware('ability:dbs-view');
     Route::get('/dbs', [DbController::class, 'list'])->middleware('ability:dbs-view');
     Route::post('/dbs', [DbController::class, 'create'])->middleware('ability:dbs-create');
     Route::delete('/dbs/{name}', [DbController::class, 'delete'])->middleware('ability:dbs-delete');

@@ -21,6 +21,7 @@ return [
         'aliases-view' => 'Read aliases',
         'aliases-create' => 'Add aliases',
         'aliases-delete' => 'Remove aliases',
+        'www-manage' => 'WWW / apex redirects',
         'dbs-view' => 'List databases',
         'dbs-create' => 'Create databases',
         'dbs-delete' => 'Delete databases',

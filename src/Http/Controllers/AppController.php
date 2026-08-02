@@ -29,6 +29,9 @@ class AppController extends Controller
                 'branch' => $app['branch'] ?? '',
                 'repository' => $app['repository'] ?? '',
                 'aliases' => $app['aliases'] ?? [],
+                'engine' => $this->validator->getAppEngine($name),
+                'www_redirect' => $this->validator->getWwwRedirect($name),
+                'force_https' => $this->validator->isForceHttps($name),
                 'suspended' => $this->validator->isSuspended($name),
                 'basic_auth' => $this->validator->isBasicAuthEnabled($name),
                 'created_at' => $app['created_at'] ?? '',
@@ -46,6 +49,10 @@ class AppController extends Controller
         $app = $apps[$name];
         $app['app'] = $name;
         $app['suspended'] = $this->validator->isSuspended($name);
+        $app['basic_auth'] = $this->validator->isBasicAuthEnabled($name);
+        $app['engine'] = $this->validator->getAppEngine($name);
+        $app['www_redirect'] = $this->validator->getWwwRedirect($name);
+        $app['force_https'] = $this->validator->isForceHttps($name);
         return response()->json(['data' => $app], 200);
     }
 
@@ -63,6 +70,7 @@ class AppController extends Controller
             'php' => 'nullable|string',
             'custom' => 'nullable|boolean',
             'docroot' => 'nullable|string|max:128',
+            'engine' => 'nullable|string',
         ]);
 
         if (isset($validated['repository'])) {
@@ -83,6 +91,15 @@ class AppController extends Controller
         }
         if ($err = $this->validator->phpVersionError($validated['php'] ?? null)) {
             return response()->json(['error' => $err], 422);
+        }
+        if ($err = $this->validator->engineError($validated['engine'] ?? null)) {
+            return response()->json(['error' => $err], 422);
+        }
+        if (! empty($validated['engine'])) {
+            $validated['engine'] = $this->validator->normalizeEngine($validated['engine']);
+        }
+        if ($request->boolean('custom')) {
+            unset($validated['engine']);
         }
         if (! empty($validated['docroot']) && ! preg_match('/^[a-zA-Z0-9_\-\/]+$/', $validated['docroot'])) {
             return response()->json(['error' => 'Invalid docroot format. Use alphanumeric characters, dashes, underscores, and slashes only.'], 422);

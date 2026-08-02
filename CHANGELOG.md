@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.0] - 2026-08-02
+
+Cipi 4.8 support: www/apex redirects, force HTTPS, and multi-engine databases (MariaDB + PostgreSQL).
+
+### Added
+
+- **WWW redirects** — REST endpoints under `/api/apps/{name}/www` wrapping [`cipi www`](https://cipi.sh/docs/infrastructure#www):
+  - `GET …/www` — sync status (`primary`, `apex`, `www`, `redirect`)
+  - `POST …/www/add` — add counterpart host alias
+  - `POST …/www/force-to-root` / `force-from-root` — canonical 301 redirects
+  - `POST …/www/clear` — clear redirect state
+  - Token ability **`www-manage`**; MCP tools `WwwStatus`, `WwwAdd`, `WwwForceToRoot`, `WwwForceFromRoot`, `WwwClear`
+- **`POST /api/apps/{name}/ssl/force`** — re-apply HTTP → HTTPS redirect without new issuance (`cipi ssl force`). MCP tool `SslForce`
+- **Multi-engine databases** — optional `engine` (`mariadb`|`pgsql`) on create/list/delete/backup/restore/password; **`GET /api/dbs/engines`** lists installed engines and default. MCP tool `DbEngines`
+- **App create `engine`** — Laravel apps can select DB engine at create time (`POST /api/apps`, MCP `AppCreate`)
+- App list/show expose **`engine`**, **`www_redirect`**, and **`force_https`** from `apps-public.json` / apps metadata
+
+### Changed
+
+- **`CipiCliService`** — allows `www *`, `ssl force`, and `db engines`
+- **`CipiOutputParser`** — parses Cipi 4.8 `db list` / `db engines` / www / ssl force output (keeps legacy db list shape)
+- **`db delete` / `db restore`** jobs pass `--force` for non-interactive API use
+- **OpenAPI** — `info.version` bumped to **1.12.0**
+
 ## [1.11.12] - 2026-07-01
 
 Reliable paginated app logs under `open_basedir` and accurate app suspend status.

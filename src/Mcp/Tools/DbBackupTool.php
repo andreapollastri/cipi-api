@@ -4,17 +4,19 @@ namespace CipiApi\Mcp\Tools;
 
 use CipiApi\Mcp\Support\McpArgValidator;
 use CipiApi\Services\CipiJobService;
+use CipiApi\Services\CipiValidationService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Create a compressed backup dump of a database. Dispatches async job. Returns job_id for polling.')]
+#[Description('Create a compressed backup dump of a database. Optional engine=mariadb|pgsql (Cipi 4.8+). Dispatches async job.')]
 class DbBackupTool extends Tool
 {
     public function __construct(
         protected CipiJobService $jobs,
+        protected CipiValidationService $validator,
     ) {}
 
     public function handle(Request $request): Response
@@ -24,8 +26,22 @@ class DbBackupTool extends Tool
             return $error;
         }
 
+        $engineRaw = $request->get('engine');
+        $engine = is_string($engineRaw) && $engineRaw !== '' ? $engineRaw : null;
+        if ($err = $this->validator->engineError($engine)) {
+            return Response::text("Error: {$err}");
+        }
+        if ($engine !== null) {
+            $engine = $this->validator->normalizeEngine($engine);
+        }
+
+        $params = ['name' => $name];
         $command = 'db backup ' . escapeshellarg($name);
-        $job = $this->jobs->dispatch('db-backup', $command, ['name' => $name]);
+        if ($engine !== null) {
+            $params['engine'] = $engine;
+            $command .= ' --engine=' . escapeshellarg($engine);
+        }
+        $job = $this->jobs->dispatch('db-backup', $command, $params);
 
         return Response::text("Job dispatched: {$job->id} (status: pending). Poll JobShow with id {$job->id} for result.");
     }
@@ -34,6 +50,7 @@ class DbBackupTool extends Tool
     {
         return [
             'name' => $schema->string()->description('Database name to backup')->required(),
+            'engine' => $schema->string()->description('Database engine: mariadb or pgsql'),
         ];
     }
 }

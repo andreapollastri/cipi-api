@@ -28,6 +28,10 @@ class AppListTool extends Tool
                 'php' => $app['php'] ?? '',
                 'branch' => $app['branch'] ?? '',
                 'aliases' => $app['aliases'] ?? [],
+                'engine' => $this->validator->getAppEngine($name),
+                'www_redirect' => $this->validator->getWwwRedirect($name),
+                'force_https' => $this->validator->isForceHttps($name),
+                'suspended' => $this->validator->isSuspended($name),
             ];
         }
         return Response::text(json_encode($data, JSON_PRETTY_PRINT));
