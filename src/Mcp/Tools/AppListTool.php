@@ -29,6 +29,8 @@ class AppListTool extends Tool
                 'branch' => $app['branch'] ?? '',
                 'aliases' => $app['aliases'] ?? [],
                 'engine' => $this->validator->getAppEngine($name),
+                'octane' => $this->validator->getAppOctane($name),
+                'octane_port' => $this->validator->getAppOctanePort($name),
                 'www_redirect' => $this->validator->getWwwRedirect($name),
                 'force_https' => $this->validator->isForceHttps($name),
                 'suspended' => $this->validator->isSuspended($name),

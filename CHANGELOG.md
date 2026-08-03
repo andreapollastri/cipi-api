@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.0] - 2026-08-03
+
+Optional Laravel Octane (FrankenPHP) on app create — requires Cipi **5.0+**.
+
+### Added
+
+- **App create `octane`** — `POST /api/apps` accepts `octane: true` or `octane: "frankenphp"` (Laravel only; rejected with `custom`). Dispatches `cipi app create --octane=frankenphp`. MCP `AppCreate` updated.
+- App list/show expose **`octane`** and **`octane_port`** from `apps-public.json`
+
+### Changed
+
+- **OpenAPI** — `info.version` bumped to **1.13.0**; `AppCreateRequest.octane`, list/show octane fields
+
 ## [1.12.1] - 2026-08-03
 
 Home page noindex and PostgreSQL in server status when installed.

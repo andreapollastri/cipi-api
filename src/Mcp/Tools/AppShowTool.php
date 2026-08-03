@@ -35,6 +35,8 @@ class AppShowTool extends Tool
         $app['suspended'] = $this->validator->isSuspended($name);
         $app['basic_auth'] = $this->validator->isBasicAuthEnabled($name);
         $app['engine'] = $this->validator->getAppEngine($name);
+        $app['octane'] = $this->validator->getAppOctane($name);
+        $app['octane_port'] = $this->validator->getAppOctanePort($name);
         $app['www_redirect'] = $this->validator->getWwwRedirect($name);
         $app['force_https'] = $this->validator->isForceHttps($name);
         return Response::text(json_encode($app, JSON_PRETTY_PRINT));

@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Cipi API",
-        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps, domain aliases, www/apex redirects, SSL certificates, and MariaDB/PostgreSQL databases (Cipi 4.8+ multi-engine).\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias/www, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status (any authenticated token). **Database listing** (`GET /api/dbs`) and **engines** (`GET /api/dbs/engines`) are synchronous. **Server status** (`GET /api/status`) is synchronous (requires `status-view`).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** Available at `/mcp` with `mcp-access` ability.",
-        "version": "1.12.1",
+        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps (PHP-FPM or optional Octane/FrankenPHP on Cipi 5.0+), domain aliases, www/apex redirects, SSL certificates, and MariaDB/PostgreSQL databases (Cipi 4.8+ multi-engine).\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias/www, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status (any authenticated token). **Database listing** (`GET /api/dbs`) and **engines** (`GET /api/dbs/engines`) are synchronous. **Server status** (`GET /api/status`) is synchronous (requires `status-view`).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** Available at `/mcp` with `mcp-access` ability.",
+        "version": "1.13.0",
         "contact": {
             "name": "Cipi",
             "url": "https://cipi.sh"
@@ -1481,6 +1481,21 @@
                         ],
                         "description": "Database engine for Laravel apps (ignored for custom apps). Requires Cipi 4.8+ and an installed engine. Server default when omitted.",
                         "example": "pgsql"
+                    },
+                    "octane": {
+                        "oneOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "frankenphp"
+                                ]
+                            }
+                        ],
+                        "description": "Serve Laravel via Octane (FrankenPHP) instead of PHP-FPM. Requires Cipi 5.0+ and laravel/octane in the app repository. Not compatible with custom apps. Boolean true is equivalent to frankenphp.",
+                        "example": true
                     }
                 }
             },
@@ -1590,6 +1605,21 @@
                                     "type": "boolean",
                                     "description": "Whether HTTP \u2192 HTTPS redirect is forced (set by ssl install/force). Cipi 4.8+.",
                                     "example": true
+                                },
+                                "octane": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [
+                                        "frankenphp"
+                                    ],
+                                    "description": "Octane server when the app uses Octane instead of PHP-FPM (null for FPM apps). Cipi 5.0+.",
+                                    "example": "frankenphp"
+                                },
+                                "octane_port": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Localhost port for the Octane process (null for FPM apps). Cipi 5.0+.",
+                                    "example": 8100
                                 }
                             }
                         }
@@ -1657,6 +1687,21 @@
                                 "type": "boolean",
                                 "description": "Whether HTTP \u2192 HTTPS redirect is forced (set by ssl install/force). Cipi 4.8+.",
                                 "example": true
+                            },
+                            "octane": {
+                                "type": "string",
+                                "nullable": true,
+                                "enum": [
+                                    "frankenphp"
+                                ],
+                                "description": "Octane server when the app uses Octane instead of PHP-FPM (null for FPM apps). Cipi 5.0+.",
+                                "example": "frankenphp"
+                            },
+                            "octane_port": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Localhost port for the Octane process (null for FPM apps). Cipi 5.0+.",
+                                "example": 8100
                             }
                         }
                     }

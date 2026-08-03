@@ -256,4 +256,70 @@ class CipiValidationService
             default => null,
         };
     }
+
+    /**
+     * Octane server for an app (`frankenphp`), or null when the app uses PHP-FPM.
+     */
+    public function getAppOctane(string $name): ?string
+    {
+        $apps = $this->getApps();
+        $octane = $apps[$name]['octane'] ?? null;
+        if (! is_string($octane) || $octane === '') {
+            return null;
+        }
+
+        return $this->normalizeOctane($octane) ?? $octane;
+    }
+
+    public function getAppOctanePort(string $name): ?int
+    {
+        $apps = $this->getApps();
+        $port = $apps[$name]['octane_port'] ?? null;
+        if ($port === null || $port === '') {
+            return null;
+        }
+        if (! is_numeric($port)) {
+            return null;
+        }
+
+        return (int) $port;
+    }
+
+    /**
+     * Validate optional Octane flag/server. Accepts bool-ish true or `frankenphp`.
+     */
+    public function octaneError(mixed $octane): ?string
+    {
+        if ($octane === null || $octane === '' || $octane === false || $octane === 0 || $octane === '0') {
+            return null;
+        }
+        if ($this->normalizeOctane($octane) === null) {
+            $label = is_scalar($octane) ? (string) $octane : gettype($octane);
+
+            return "Invalid octane '{$label}'. Allowed: true, frankenphp";
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalize API/CLI Octane values to `frankenphp`, or null when disabled.
+     */
+    public function normalizeOctane(mixed $octane): ?string
+    {
+        if ($octane === null || $octane === '' || $octane === false || $octane === 0 || $octane === '0' || $octane === 'false' || $octane === 'off' || $octane === 'no') {
+            return null;
+        }
+        if ($octane === true || $octane === 1 || $octane === '1' || $octane === 'true' || $octane === 'on' || $octane === 'yes') {
+            return 'frankenphp';
+        }
+        if (! is_string($octane)) {
+            return null;
+        }
+
+        return match (strtolower(trim($octane))) {
+            'frankenphp' => 'frankenphp',
+            default => null,
+        };
+    }
 }

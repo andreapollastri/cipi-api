@@ -30,6 +30,8 @@ class AppController extends Controller
                 'repository' => $app['repository'] ?? '',
                 'aliases' => $app['aliases'] ?? [],
                 'engine' => $this->validator->getAppEngine($name),
+                'octane' => $this->validator->getAppOctane($name),
+                'octane_port' => $this->validator->getAppOctanePort($name),
                 'www_redirect' => $this->validator->getWwwRedirect($name),
                 'force_https' => $this->validator->isForceHttps($name),
                 'suspended' => $this->validator->isSuspended($name),
@@ -51,6 +53,8 @@ class AppController extends Controller
         $app['suspended'] = $this->validator->isSuspended($name);
         $app['basic_auth'] = $this->validator->isBasicAuthEnabled($name);
         $app['engine'] = $this->validator->getAppEngine($name);
+        $app['octane'] = $this->validator->getAppOctane($name);
+        $app['octane_port'] = $this->validator->getAppOctanePort($name);
         $app['www_redirect'] = $this->validator->getWwwRedirect($name);
         $app['force_https'] = $this->validator->isForceHttps($name);
         return response()->json(['data' => $app], 200);
@@ -71,6 +75,7 @@ class AppController extends Controller
             'custom' => 'nullable|boolean',
             'docroot' => 'nullable|string|max:128',
             'engine' => 'nullable|string',
+            'octane' => 'nullable',
         ]);
 
         if (isset($validated['repository'])) {
@@ -95,11 +100,19 @@ class AppController extends Controller
         if ($err = $this->validator->engineError($validated['engine'] ?? null)) {
             return response()->json(['error' => $err], 422);
         }
+        if ($err = $this->validator->octaneError($validated['octane'] ?? null)) {
+            return response()->json(['error' => $err], 422);
+        }
         if (! empty($validated['engine'])) {
             $validated['engine'] = $this->validator->normalizeEngine($validated['engine']);
         }
+        $octane = $this->validator->normalizeOctane($validated['octane'] ?? null);
+        unset($validated['octane']);
         if ($request->boolean('custom')) {
             unset($validated['engine']);
+            if ($octane !== null) {
+                return response()->json(['error' => 'Octane is only available for Laravel apps (not custom)'], 422);
+            }
         }
         if (! empty($validated['docroot']) && ! preg_match('/^[a-zA-Z0-9_\-\/]+$/', $validated['docroot'])) {
             return response()->json(['error' => 'Invalid docroot format. Use alphanumeric characters, dashes, underscores, and slashes only.'], 422);
@@ -121,8 +134,12 @@ class AppController extends Controller
         if ($isCustom) {
             $args[] = '--custom';
         }
+        if ($octane !== null) {
+            $args[] = '--octane=' . escapeshellarg($octane);
+            $validated['octane'] = $octane;
+        }
         foreach ($validated as $k => $v) {
-            if ($k === 'custom') {
+            if ($k === 'custom' || $k === 'octane') {
                 continue;
             }
             if ($v !== null && $v !== '') {
