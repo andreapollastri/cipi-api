@@ -3,7 +3,7 @@
     "info": {
         "title": "Cipi API",
         "description": "REST API for Cipi Server Control Panel. Manage Laravel apps, domain aliases, www/apex redirects, SSL certificates, and MariaDB/PostgreSQL databases (Cipi 4.8+ multi-engine).\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias/www, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status (any authenticated token). **Database listing** (`GET /api/dbs`) and **engines** (`GET /api/dbs/engines`) are synchronous. **Server status** (`GET /api/status`) is synchronous (requires `status-view`).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** Available at `/mcp` with `mcp-access` ability.",
-        "version": "1.12.0",
+        "version": "1.12.1",
         "contact": {
             "name": "Cipi",
             "url": "https://cipi.sh"
@@ -1032,7 +1032,7 @@
                     "Server"
                 ],
                 "summary": "Server status",
-                "description": "Returns the same structured data as `cipi status`: system info, resources (CPU, memory, disk), services, PHP pools, and app count. Runs `sudo cipi status` on the host and parses CLI output; falls back to direct host reads when sudo is unavailable. Requires `status-view` ability and `cipi status` in `cipi-api` sudoers (see Cipi `setup.sh`).",
+                "description": "Returns the same structured data as `cipi status`: system info, resources (CPU, memory, disk), services (nginx, mariadb, optional postgresql when installed, supervisor, fail2ban), PHP pools, and app count. Runs `sudo cipi status` on the host and parses CLI output; falls back to direct host reads when sudo is unavailable. Requires `status-view` ability and `cipi status` in `cipi-api` sudoers (see Cipi `setup.sh`).",
                 "operationId": "statusShow",
                 "responses": {
                     "200": {
@@ -1993,6 +1993,7 @@
                                 "example": {
                                     "nginx": "running",
                                     "mariadb": "running",
+                                    "postgresql": "running",
                                     "supervisor": "running",
                                     "fail2ban": "running"
                                 }

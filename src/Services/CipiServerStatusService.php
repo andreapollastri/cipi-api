@@ -91,8 +91,14 @@ class CipiServerStatusService
      */
     protected function servicesInfo(): array
     {
+        $services = self::SERVICES;
+        // Match `cipi status`: include PostgreSQL only when the unit is installed (Cipi 4.8+).
+        if ($this->serviceUnitExists('postgresql')) {
+            $services[] = 'postgresql';
+        }
+
         $status = [];
-        foreach (self::SERVICES as $service) {
+        foreach ($services as $service) {
             $status[$service] = $this->serviceIsRunning($service) ? 'running' : 'stopped';
         }
 
@@ -245,6 +251,15 @@ class CipiServerStatusService
         $state = trim((string) shell_exec('systemctl is-active ' . escapeshellarg($unit) . ' 2>/dev/null'));
 
         return $state === 'active';
+    }
+
+    protected function serviceUnitExists(string $unit): bool
+    {
+        $output = [];
+        $code = 1;
+        @exec('systemctl list-unit-files --quiet ' . escapeshellarg($unit . '.service') . ' 2>/dev/null', $output, $code);
+
+        return $code === 0;
     }
 
     protected function phpPoolCount(string $version): int

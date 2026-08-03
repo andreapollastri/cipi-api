@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.1] - 2026-08-03
+
+Home page noindex and PostgreSQL in server status when installed.
+
+### Added
+
+- **Home robots** — welcome page meta `noindex, nofollow`, `X-Robots-Tag` on `/`, and `/robots.txt` (`User-agent: *` / `Disallow: /`)
+
+### Fixed
+
+- **`GET /api/status`** — host-read fallback includes **`postgresql`** when the systemd unit is installed (same as `cipi status` on Cipi 4.8+); CLI-parsed snapshots already surfaced it when present
+
+### Changed
+
+- **OpenAPI** — `info.version` bumped to **1.12.1**; status `services` example includes `postgresql`
+
 ## [1.12.0] - 2026-08-02
 
 Cipi 4.8 support: www/apex redirects, force HTTPS, and multi-engine databases (MariaDB + PostgreSQL).
