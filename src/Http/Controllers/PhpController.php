@@ -29,25 +29,31 @@ class PhpController extends Controller
 
     public function install(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'version' => 'required|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'version' => 'required|string',
+            ]);
 
-        $version = $validated['version'];
-        if ($err = $this->validator->phpVersionError($version)) {
-            return response()->json(['error' => $err], 422);
+            $version = $validated['version'];
+            if ($err = $this->validator->phpVersionError($version)) {
+                return response()->json(['error' => $err], 422);
+            }
+            if ($this->validator->isPhpInstalled($version)) {
+                return response()->json(['error' => "PHP {$version} is already installed"], 409);
+            }
+
+            $job = $this->jobs->dispatch(
+                'php-install',
+                'php install ' . escapeshellarg($version),
+                ['version' => $version],
+            );
+
+            return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-        if ($this->validator->isPhpInstalled($version)) {
-            return response()->json(['error' => "PHP {$version} is already installed"], 409);
-        }
-
-        $job = $this->jobs->dispatch(
-            'php-install',
-            'php install ' . escapeshellarg($version),
-            ['version' => $version],
-        );
-
-        return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
 
     public function remove(string $version): JsonResponse

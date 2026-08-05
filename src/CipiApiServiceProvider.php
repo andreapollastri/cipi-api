@@ -64,6 +64,17 @@ class CipiApiServiceProvider extends ServiceProvider
             }
         );
 
+        $exceptionHandler->renderable(
+            function (\ErrorException $e, $request) {
+                if ($request && ($request->expectsJson() || $request->is('api/*'))
+                    && str_contains($e->getMessage(), 'open_basedir')) {
+                    return response()->json([
+                        'error' => 'PHP open_basedir blocked a host path check. Update cipi/api to 1.16+ (cipi self-update && cipi api update).',
+                    ], 503);
+                }
+            }
+        );
+
         $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
 

@@ -25,19 +25,19 @@ class SmtpController extends Controller
 
     public function update(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'host' => 'required|string|max:255',
-            'port' => 'nullable|integer|min:1|max:65535',
-            'user' => 'required|string|max:255',
-            'password' => 'nullable|string|max:512',
-            'from' => 'required|email|max:255',
-            'to' => 'required|email|max:255',
-            'tls' => 'sometimes|boolean',
-            'enabled' => 'sometimes|boolean',
-            'test' => 'sometimes|boolean',
-        ]);
-
         try {
+            $validated = $request->validate([
+                'host' => 'required|string|max:255',
+                'port' => 'nullable|integer|min:1|max:65535',
+                'user' => 'required|string|max:255',
+                'password' => 'nullable|string|max:512',
+                'from' => 'required|email|max:255',
+                'to' => 'required|email|max:255',
+                'tls' => 'sometimes|boolean',
+                'enabled' => 'sometimes|boolean',
+                'test' => 'sometimes|boolean',
+            ]);
+
             $current = $this->smtp->status();
             $password = $validated['password'] ?? '';
             if ($password === '' && empty($current['configured'])) {
@@ -65,6 +65,10 @@ class SmtpController extends Controller
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (MysqlDatabaseListingUnavailableException $e) {
             return response()->json(['error' => $e->getMessage()], 503);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 

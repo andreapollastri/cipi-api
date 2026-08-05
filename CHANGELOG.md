@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - **`POST /api/php/install` / `DELETE /api/php/{version}` / app PHP checks** — `CipiValidationService::isPhpInstalled()` no longer calls `is_file()` / `is_dir()` on `/usr/bin` or `/etc/php` under the API FPM `open_basedir` (those paths are outside the allowlist). Laravel turned the resulting warnings into `ErrorException`, so the GUI showed a bare **Server Error**. Detection now skips host stats outside the basedir and falls back to a shell `test`.
+- **`POST /api/php/install` / `PUT /api/smtp`** — uncaught exceptions now return JSON `{ "error": "…" }` instead of a generic **Server Error** when `APP_DEBUG=false`.
+- **open_basedir** — API exception handler maps open_basedir `ErrorException`s to `503` with an actionable message (update to 1.16+).
+
+### Changed
+
+- **OpenAPI** — `info.version` **1.16.0**.
 
 ## [1.15.0] - 2026-08-05
 
