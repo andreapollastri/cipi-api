@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Cipi API",
-        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps (PHP-FPM or optional Octane/FrankenPHP on Cipi 5.0+), domain aliases, www/apex redirects, SSL certificates, and MariaDB/PostgreSQL databases (Cipi 4.8+ multi-engine).\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias/www, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status (any authenticated token). **Database listing** (`GET /api/dbs`) and **engines** (`GET /api/dbs/engines`) are synchronous. **Server status** (`GET /api/status`) is synchronous (requires `status-view`).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**MCP Server:** Available at `/mcp` with `mcp-access` ability.",
-        "version": "1.13.0",
+        "description": "REST API for Cipi Server Control Panel. Manage Laravel apps (PHP-FPM or optional Octane/FrankenPHP on Cipi 5.0+), domain aliases, www/apex redirects, SSL certificates, and MariaDB/PostgreSQL databases (Cipi 4.8+ multi-engine).\n\n**Authentication:** All endpoints require a Bearer token via the `Authorization` header.\nTokens are managed with `cipi api token create|list|revoke`.\n\n**Async Operations:** Most write operations (create, edit, delete, SSL, alias/www, database create/delete/backup/restore/password) are dispatched as background jobs with `202 Accepted` and a `job_id`. Poll `GET /api/jobs/{id}` to check status (any authenticated token). **Database listing** (`GET /api/dbs`) and **engines** (`GET /api/dbs/engines`) are synchronous. **Server status** (`GET /api/status`) is synchronous (requires `status-view`).\n\n**Sync Validation:** Domain and app existence checks are performed synchronously before job dispatch. Validation errors (409, 404, 422) are returned immediately.\n\n**Env / auth.json / Artisan (Cipi >= 5.0.3):** `GET|PUT /apps/{name}/env` (key/value, ability `apps-env`), `GET|POST|PUT|DELETE /apps/{name}/auth` (shared auth.json, ability `apps-auth` \u2014 not HTTP Basic Auth), `POST /apps/{name}/artisan` (async job, ability `apps-artisan`; poll `GET /jobs/{id}` for output).\n\n**App run (Cipi >= 5.0.3):** `GET /run-commands` and `POST /apps/{name}/run` (ability `apps-run`) dispatch whitelisted non-interactive binaries as the app user (composer, npm, ls, rm, git, \u2026 \u2014 no nano/vim/less/bash/tinker). Async job; poll `/jobs/{id}`.\n\n**Deploy config (Cipi >= 5.0.3):** `GET|PUT /apps/{name}/deploy-config` (ability `apps-deploy-config`) \u2014 structured recipe options (keep_releases, migrate/optimize hooks, node_build, extra_artisan). Regenerates deploy.php from template; not a raw PHP upload.\n\n**MCP Server:** Available at `/mcp` with `mcp-access` ability.",
+        "version": "1.15.0",
         "contact": {
             "name": "Cipi",
             "url": "https://cipi.sh"
@@ -418,6 +418,492 @@
                     },
                     "409": {
                         "$ref": "#/components/responses/Conflict"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/env": {
+            "get": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Get app .env variables",
+                "description": "Return all `.env` key/value pairs for a Laravel app (`cipi app env --show --json`). Custom apps are rejected. Requires `apps-env` ability and Cipi CLI >= 5.0.3.",
+                "operationId": "appEnvShow",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Env variables",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AppEnvResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Update app .env variables",
+                "description": "Merge `.env` keys (`set`) and/or remove keys (`unset`) without replacing the whole file. Requires `apps-env` ability and Cipi CLI >= 5.0.3.",
+                "operationId": "appEnvUpdate",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AppEnvUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated env variables",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AppEnvResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/auth": {
+            "get": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Get shared auth.json",
+                "description": "Return the app's shared `auth.json` (Composer / structured credentials). Distinct from HTTP Basic Auth (`/basicauth`). Requires `apps-auth` ability and Cipi CLI >= 5.0.3.",
+                "operationId": "appAuthJsonShow",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "auth.json content",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthJsonResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Create shared auth.json",
+                "description": "Create `shared/auth.json` with default users array. Pass `force: true` to overwrite. Requires `apps-auth` ability.",
+                "operationId": "appAuthJsonCreate",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AuthJsonCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "auth.json created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthJsonResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Replace shared auth.json",
+                "description": "Replace the entire `auth.json` document with the request body (must be valid JSON). Requires `apps-auth` ability.",
+                "operationId": "appAuthJsonUpdate",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AuthJsonDocument"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "auth.json updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthJsonResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Delete shared auth.json",
+                "description": "Delete `shared/auth.json` and remove it from Deployer shared_files. Requires `apps-auth` ability.",
+                "operationId": "appAuthJsonDelete",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "auth.json deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthJsonDeleteResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/artisan": {
+            "post": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Run Artisan command",
+                "description": "Dispatch `cipi app artisan` as a background job. Poll `GET /api/jobs/{id}` for `output` and `exit_code`. Custom apps and `tinker` are rejected. Requires `apps-artisan` ability.",
+                "operationId": "appArtisanRun",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AppArtisanRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Job accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobAcceptedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/run-commands": {
+            "get": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "List whitelisted app run commands",
+                "description": "Return the non-interactive binary whitelist for `POST /apps/{name}/run`. Editors, pagers, shells, and REPLs are excluded. Requires `apps-run` ability and Cipi CLI >= 5.0.3.",
+                "operationId": "appRunCommands",
+                "responses": {
+                    "200": {
+                        "description": "Whitelist",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AppRunCommandsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/run": {
+            "post": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Run whitelisted app command",
+                "description": "Dispatch `cipi app run` as a background job. Only whitelisted non-interactive binaries are accepted (composer, npm, ls, cat, rm, git, php, node, \u2026). No nano/vim/less/bash/tinker/ssh. Poll `GET /api/jobs/{id}` for output. Requires `apps-run` ability and Cipi CLI >= 5.0.3.",
+                "operationId": "appRun",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AppRunRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Job accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobAcceptedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/apps/{name}/deploy-config": {
+            "get": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Get deploy config",
+                "description": "Return structured Deployer recipe options for a Laravel app (stored in apps.json, applied to deploy.php). Requires `apps-deploy-config` and Cipi >= 5.0.3.",
+                "operationId": "appDeployConfigShow",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deploy config",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeployConfigResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Apps"
+                ],
+                "summary": "Update deploy config",
+                "description": "Merge structured deploy options and regenerate deploy.php from the Cipi template. Safe alternative to editing PHP by hand. Requires `apps-deploy-config`.",
+                "operationId": "appDeployConfigUpdate",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppName"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DeployConfigUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated deploy config",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeployConfigResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     },
                     "503": {
                         "$ref": "#/components/responses/ServiceUnavailable"
@@ -2156,6 +2642,8 @@
                                     "app-deploy",
                                     "app-deploy-rollback",
                                     "app-deploy-unlock",
+                                    "app-artisan",
+                                    "app-run",
                                     "alias-create",
                                     "alias-delete",
                                     "ssl-install",
@@ -2669,6 +3157,238 @@
                                 "example": "to-root"
                             }
                         }
+                    }
+                }
+            },
+            "AppEnvUpdateRequest": {
+                "type": "object",
+                "properties": {
+                    "set": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Keys to set or update",
+                        "example": {
+                            "MAIL_HOST": "smtp.example.com",
+                            "MAIL_PORT": "587"
+                        }
+                    },
+                    "unset": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Keys to remove",
+                        "example": [
+                            "OLD_KEY"
+                        ]
+                    }
+                }
+            },
+            "AppEnvResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "app": {
+                                "type": "string",
+                                "example": "myapp"
+                            },
+                            "vars": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string"
+                                },
+                                "example": {
+                                    "APP_ENV": "production",
+                                    "APP_DEBUG": "false"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "AuthJsonCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "force": {
+                        "type": "boolean",
+                        "description": "Overwrite if auth.json already exists",
+                        "example": false
+                    }
+                }
+            },
+            "AuthJsonDocument": {
+                "type": "object",
+                "description": "Arbitrary JSON document stored as shared/auth.json",
+                "additionalProperties": true,
+                "example": {
+                    "http-basic": {
+                        "repo.example.com": {
+                            "username": "token",
+                            "password": "secret"
+                        }
+                    }
+                }
+            },
+            "AuthJsonResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "app": {
+                                "type": "string",
+                                "example": "myapp"
+                            },
+                            "content": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            },
+            "AuthJsonDeleteResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "app": {
+                                "type": "string",
+                                "example": "myapp"
+                            },
+                            "deleted": {
+                                "type": "boolean",
+                                "example": true
+                            }
+                        }
+                    }
+                }
+            },
+            "AppArtisanRequest": {
+                "type": "object",
+                "required": [
+                    "command"
+                ],
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Artisan command and arguments (no shell metacharacters; tinker blocked)",
+                        "example": "migrate --force"
+                    }
+                }
+            },
+            "AppRunRequest": {
+                "type": "object",
+                "required": [
+                    "command"
+                ],
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Whitelisted binary + args (e.g. composer install --no-dev, ls -la, npm run build)",
+                        "example": "composer install --no-dev"
+                    }
+                }
+            },
+            "AppRunCommandsResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "commands": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "example": [
+                                    "composer",
+                                    "npm",
+                                    "ls",
+                                    "ll",
+                                    "cat",
+                                    "rm",
+                                    "git"
+                                ]
+                            },
+                            "notes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "DeployConfigUpdateRequest": {
+                "type": "object",
+                "properties": {
+                    "keep_releases": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "example": 5
+                    },
+                    "migrate": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "optimize": {
+                        "type": "boolean"
+                    },
+                    "storage_link": {
+                        "type": "boolean"
+                    },
+                    "queue_restart": {
+                        "type": "boolean"
+                    },
+                    "horizon_terminate": {
+                        "type": "boolean"
+                    },
+                    "predeploy_snapshot": {
+                        "type": "boolean"
+                    },
+                    "node_build": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "npm ci && npm run build"
+                    },
+                    "extra_artisan": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "view:clear",
+                            "db:seed"
+                        ]
+                    }
+                }
+            },
+            "DeployConfigResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeployConfigUpdateRequest"
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "app": {
+                                        "type": "string",
+                                        "example": "myapp"
+                                    }
+                                }
+                            }
+                        ]
                     }
                 }
             }

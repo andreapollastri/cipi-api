@@ -17,6 +17,8 @@ class CipiOutputParser
             'app-deploy' => $this->parseAppDeploy($plain),
             'app-deploy-rollback' => $this->parseAppDeployRollback($plain),
             'app-deploy-unlock' => $this->parseAppDeployUnlock($plain),
+            'app-artisan' => $this->parseAppArtisan($plain, $success),
+            'app-run' => $this->parseAppRun($plain, $success),
             'alias-create' => $this->parseAliasCreate($plain),
             'alias-delete' => $this->parseAliasDelete($plain),
             'www-add' => $this->parseWwwAdd($plain),
@@ -184,6 +186,22 @@ class CipiOutputParser
             ], fn ($v) => $v !== null);
         }
         return null;
+    }
+
+    protected function parseAppArtisan(string $text, bool $success): array
+    {
+        return [
+            'success' => $success,
+            'output_preview' => mb_substr(trim($text), 0, 500),
+        ];
+    }
+
+    protected function parseAppRun(string $text, bool $success): array
+    {
+        return [
+            'success' => $success,
+            'output_preview' => mb_substr(trim($text), 0, 500),
+        ];
     }
 
     protected function parseAppDeploy(string $text): ?array

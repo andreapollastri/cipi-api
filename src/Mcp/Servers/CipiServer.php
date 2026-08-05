@@ -7,6 +7,8 @@ use CipiApi\Mcp\Tools\AliasListTool;
 use CipiApi\Mcp\Tools\AliasRemoveTool;
 use CipiApi\Mcp\Tools\AppCreateTool;
 use CipiApi\Mcp\Tools\AppDeleteTool;
+use CipiApi\Mcp\Tools\AppDeployConfigShowTool;
+use CipiApi\Mcp\Tools\AppDeployConfigUpdateTool;
 use CipiApi\Mcp\Tools\AppDeployRollbackTool;
 use CipiApi\Mcp\Tools\AppDeployTool;
 use CipiApi\Mcp\Tools\AppDeployUnlockTool;
@@ -15,10 +17,18 @@ use CipiApi\Mcp\Tools\AppListTool;
 use CipiApi\Mcp\Tools\AppShowTool;
 use CipiApi\Mcp\Tools\ApiLogShowTool;
 use CipiApi\Mcp\Tools\AppArtisanTool;
+use CipiApi\Mcp\Tools\AppAuthJsonCreateTool;
+use CipiApi\Mcp\Tools\AppAuthJsonDeleteTool;
+use CipiApi\Mcp\Tools\AppAuthJsonShowTool;
+use CipiApi\Mcp\Tools\AppAuthJsonUpdateTool;
 use CipiApi\Mcp\Tools\AppBasicAuthDisableTool;
 use CipiApi\Mcp\Tools\AppBasicAuthEnableTool;
 use CipiApi\Mcp\Tools\AppBasicAuthStatusTool;
+use CipiApi\Mcp\Tools\AppEnvShowTool;
+use CipiApi\Mcp\Tools\AppEnvUpdateTool;
 use CipiApi\Mcp\Tools\AppLogsTool;
+use CipiApi\Mcp\Tools\AppRunCommandsTool;
+use CipiApi\Mcp\Tools\AppRunTool;
 use CipiApi\Mcp\Tools\AppSuspendTool;
 use CipiApi\Mcp\Tools\AppUnsuspendTool;
 use CipiApi\Mcp\Tools\DbBackupTool;
@@ -52,14 +62,24 @@ class CipiServer extends Server
      * Laravel MCP paginates tools/list (default 15). Cursor does not fetch further pages,
      * so expose all Cipi tools in a single list response.
      */
-    public int $defaultPaginationLength = 60;
+    public int $defaultPaginationLength = 80;
 
-    public int $maxPaginationLength = 60;
+    public int $maxPaginationLength = 80;
 
     protected array $tools = [
         AppListTool::class,
         AppShowTool::class,
         AppArtisanTool::class,
+        AppRunTool::class,
+        AppRunCommandsTool::class,
+        AppDeployConfigShowTool::class,
+        AppDeployConfigUpdateTool::class,
+        AppEnvShowTool::class,
+        AppEnvUpdateTool::class,
+        AppAuthJsonShowTool::class,
+        AppAuthJsonCreateTool::class,
+        AppAuthJsonUpdateTool::class,
+        AppAuthJsonDeleteTool::class,
         AppCreateTool::class,
         AppEditTool::class,
         AppDeleteTool::class,

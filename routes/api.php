@@ -3,9 +3,14 @@
 use CipiApi\Http\Controllers\AliasController;
 use CipiApi\Http\Controllers\AppLogsController;
 use CipiApi\Http\Controllers\AppController;
+use CipiApi\Http\Controllers\AppRunController;
+use CipiApi\Http\Controllers\ArtisanController;
+use CipiApi\Http\Controllers\AuthJsonController;
 use CipiApi\Http\Controllers\BasicAuthController;
 use CipiApi\Http\Controllers\DbController;
+use CipiApi\Http\Controllers\DeployConfigController;
 use CipiApi\Http\Controllers\DeployController;
+use CipiApi\Http\Controllers\EnvController;
 use CipiApi\Http\Controllers\JobController;
 use CipiApi\Http\Controllers\SslController;
 use CipiApi\Http\Controllers\StatusController;
@@ -25,6 +30,27 @@ Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
     Route::get('/apps/{name}/basicauth', [BasicAuthController::class, 'status'])->middleware('ability:apps-basicauth');
     Route::post('/apps/{name}/basicauth/enable', [BasicAuthController::class, 'enable'])->middleware('ability:apps-basicauth');
     Route::post('/apps/{name}/basicauth/disable', [BasicAuthController::class, 'disable'])->middleware('ability:apps-basicauth');
+
+    // App .env (key/value — requires Cipi CLI ≥ 5.0.3)
+    Route::get('/apps/{name}/env', [EnvController::class, 'show'])->middleware('ability:apps-env');
+    Route::put('/apps/{name}/env', [EnvController::class, 'update'])->middleware('ability:apps-env');
+
+    // Shared auth.json (Composer / structured JSON — not HTTP Basic Auth)
+    Route::get('/apps/{name}/auth', [AuthJsonController::class, 'show'])->middleware('ability:apps-auth');
+    Route::post('/apps/{name}/auth', [AuthJsonController::class, 'create'])->middleware('ability:apps-auth');
+    Route::put('/apps/{name}/auth', [AuthJsonController::class, 'update'])->middleware('ability:apps-auth');
+    Route::delete('/apps/{name}/auth', [AuthJsonController::class, 'delete'])->middleware('ability:apps-auth');
+
+    // Artisan (async job)
+    Route::post('/apps/{name}/artisan', [ArtisanController::class, 'run'])->middleware('ability:apps-artisan');
+
+    // Whitelisted non-interactive app commands (async — requires Cipi CLI ≥ 5.0.3)
+    Route::get('/run-commands', [AppRunController::class, 'commands'])->middleware('ability:apps-run');
+    Route::post('/apps/{name}/run', [AppRunController::class, 'run'])->middleware('ability:apps-run');
+
+    // Structured deploy.php options (sync — not raw PHP upload; requires Cipi CLI ≥ 5.0.3)
+    Route::get('/apps/{name}/deploy-config', [DeployConfigController::class, 'show'])->middleware('ability:apps-deploy-config');
+    Route::put('/apps/{name}/deploy-config', [DeployConfigController::class, 'update'])->middleware('ability:apps-deploy-config');
 
     // Aliases
     Route::get('/apps/{name}/aliases', [AliasController::class, 'list'])->middleware('ability:aliases-view');
