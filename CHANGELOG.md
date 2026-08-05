@@ -2,37 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.15.0] - 2026-08-05
-
-Whitelisted non-interactive app commands + structured deploy config. Requires **Cipi CLI ≥ 5.0.3**.
-
-### Added
-
-- **`POST /api/apps/{name}/run`** — body `{ "command": "composer install --no-dev" }` → `202` job (`app-run`); poll `GET /api/jobs/{id}` for output. Ability `apps-run`.
-- **`GET /api/run-commands`** — list allowed binaries (composer, npm/npx/yarn/pnpm, ls/ll, cat/head/tail, mkdir/cp/mv/rm/…, tar/zip, git, php, node, find, …).
-- **Guards** — no editors/pagers/shells/REPLs (`nano`, `vim`, `less`, `bash`, `tinker`, …); no interactive flags (`tail -f`, `git -i`, `php -a`, `node -e`, …); no shell metacharacters / `..` path traversal.
-- **`GET|PUT /api/apps/{name}/deploy-config`** — structured Deployer recipe options (`keep_releases`, migrate/optimize/storage_link/queue_restart/horizon_terminate, `node_build`, `predeploy_snapshot`, `extra_artisan`). Regenerates `deploy.php` from template (not a raw PHP upload). Ability `apps-deploy-config`.
-- **MCP** — `AppRun`, `AppRunCommands`, `AppDeployConfigShow`, `AppDeployConfigUpdate`.
-
-### Changed
-
-- **OpenAPI** — `info.version` **1.15.0**; job type `app-run`; deploy-config paths.
-
 ## [1.14.0] - 2026-08-05
 
-App `.env` key/value management, shared `auth.json` CRUD, and Artisan via async jobs. Requires **Cipi CLI ≥ 5.0.3** (`cipi self-update`) for non-interactive `app env` / `auth` flags and sudoers whitelist (`app env`, `app artisan`, `auth *`).
+App `.env` / `auth.json` / Artisan, whitelisted `app run`, and structured deploy config. Requires **Cipi CLI ≥ 5.0.3** (`cipi self-update`) for non-interactive flags and sudoers whitelist (`app env`, `app artisan`, `app run`, `auth *`, deploy-config).
 
 ### Added
 
 - **`.env` API** — `GET|PUT /api/apps/{name}/env` (ability `apps-env`): list variables; merge with `{ "set": {…}, "unset": […] }`. Sync. MCP: `AppEnvShow`, `AppEnvUpdate` (secrets redacted).
 - **`auth.json` API** — `GET|POST|PUT|DELETE /api/apps/{name}/auth` (ability `apps-auth`): shared Composer/structured JSON under `shared/auth.json`. Distinct from HTTP Basic Auth (`apps-basicauth`). MCP: `AppAuthJson*`.
 - **Artisan REST** — `POST /api/apps/{name}/artisan` with `{ "command": "…" }` → `202` job (`app-artisan`); poll `GET /api/jobs/{id}` for `output` / `exit_code`. Ability `apps-artisan`. MCP `AppArtisan` remains synchronous.
-- **Token abilities** — `apps-env`, `apps-auth`, `apps-artisan` in `config/cipi.php`.
+- **`POST /api/apps/{name}/run`** — body `{ "command": "composer install --no-dev" }` → `202` job (`app-run`); poll `GET /api/jobs/{id}` for output. Ability `apps-run`.
+- **`GET /api/run-commands`** — list allowed binaries (composer, npm/npx/yarn/pnpm, ls/ll, cat/head/tail, mkdir/cp/mv/rm/…, tar/zip, git, php, node, find, …).
+- **Guards** — no editors/pagers/shells/REPLs (`nano`, `vim`, `less`, `bash`, `tinker`, …); no interactive flags (`tail -f`, `git -i`, `php -a`, `node -e`, …); no shell metacharacters / `..` path traversal.
+- **`GET|PUT /api/apps/{name}/deploy-config`** — structured Deployer recipe options (`keep_releases`, migrate/optimize/storage_link/queue_restart/horizon_terminate, `node_build`, `predeploy_snapshot`, `extra_artisan`). Regenerates `deploy.php` from template (not a raw PHP upload). Ability `apps-deploy-config`.
+- **Token abilities** — `apps-env`, `apps-auth`, `apps-artisan`, `apps-run`, `apps-deploy-config` in `config/cipi.php`.
 - **CLI whitelist** — `app env`, `auth create|edit|show|delete` in `CipiCliService::ALLOWED_COMMANDS`.
+- **MCP** — `AppRun`, `AppRunCommands`, `AppDeployConfigShow`, `AppDeployConfigUpdate`.
 
 ### Changed
 
-- **OpenAPI** — `info.version` **1.14.0**; new paths/schemas for env, auth.json, artisan; job type `app-artisan`.
+- **OpenAPI** — `info.version` **1.14.0**; paths/schemas for env, auth.json, artisan, app-run, deploy-config; job types `app-artisan`, `app-run`.
 
 ## [1.13.0] - 2026-08-03
 
