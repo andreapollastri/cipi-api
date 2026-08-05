@@ -10,6 +10,7 @@ use CipiApi\Console\Commands\SeedApiUser;
 use CipiApi\Exceptions\AppsJsonUnreadableException;
 use CipiApi\Exceptions\DisallowedCipiCommandException;
 use CipiApi\Exceptions\MysqlDatabaseListingUnavailableException;
+use CipiApi\Http\Middleware\EnsureIpWhitelisted;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -97,5 +98,6 @@ class CipiApiServiceProvider extends ServiceProvider
         $router = $this->app['router'];
         $router->aliasMiddleware('abilities', CheckAbilities::class);
         $router->aliasMiddleware('ability', CheckForAnyAbility::class);
+        $router->aliasMiddleware('cipi.ip', EnsureIpWhitelisted::class);
     }
 }

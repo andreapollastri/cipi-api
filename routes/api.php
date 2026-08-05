@@ -12,18 +12,25 @@ use CipiApi\Http\Controllers\DeployConfigController;
 use CipiApi\Http\Controllers\DeployController;
 use CipiApi\Http\Controllers\EnvController;
 use CipiApi\Http\Controllers\JobController;
+use CipiApi\Http\Controllers\HealthController;
+use CipiApi\Http\Controllers\IpWhitelistController;
+use CipiApi\Http\Controllers\PhpController;
+use CipiApi\Http\Controllers\ServiceController;
+use CipiApi\Http\Controllers\SmtpController;
+use CipiApi\Http\Controllers\SshController;
 use CipiApi\Http\Controllers\SslController;
 use CipiApi\Http\Controllers\StatusController;
 use CipiApi\Http\Controllers\WwwController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
+Route::prefix('api')->middleware(['cipi.ip', 'auth:sanctum'])->group(function () {
     // Apps
     Route::get('/apps', [AppController::class, 'list'])->middleware('ability:apps-view');
     Route::get('/apps/{name}', [AppController::class, 'show'])->middleware('ability:apps-view');
     Route::get('/apps/{name}/logs', [AppLogsController::class, 'show'])->middleware('ability:apps-view');
     Route::post('/apps', [AppController::class, 'create'])->middleware('ability:apps-create');
     Route::put('/apps/{name}', [AppController::class, 'edit'])->middleware('ability:apps-edit');
+    Route::post('/apps/{name}/webhook/recreate', [AppController::class, 'webhookRecreate'])->middleware('ability:apps-edit');
     Route::delete('/apps/{name}', [AppController::class, 'delete'])->middleware('ability:apps-delete');
     Route::post('/apps/{name}/suspend', [AppController::class, 'suspend'])->middleware('ability:apps-suspend');
     Route::post('/apps/{name}/unsuspend', [AppController::class, 'unsuspend'])->middleware('ability:apps-suspend');
@@ -75,6 +82,8 @@ Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
 
     // Databases
     Route::get('/dbs/engines', [DbController::class, 'engines'])->middleware('ability:dbs-view');
+    Route::post('/dbs/engines/install', [DbController::class, 'installEngine'])->middleware('ability:dbs-manage');
+    Route::put('/dbs/engines/default', [DbController::class, 'setDefault'])->middleware('ability:dbs-manage');
     Route::get('/dbs', [DbController::class, 'list'])->middleware('ability:dbs-view');
     Route::post('/dbs', [DbController::class, 'create'])->middleware('ability:dbs-create');
     Route::delete('/dbs/{name}', [DbController::class, 'delete'])->middleware('ability:dbs-delete');
@@ -82,9 +91,49 @@ Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
     Route::post('/dbs/{name}/restore', [DbController::class, 'restore'])->middleware('ability:dbs-manage');
     Route::post('/dbs/{name}/password', [DbController::class, 'password'])->middleware('ability:dbs-manage');
 
+    // PHP versions (Cipi CLI ≥ 5.0.6)
+    Route::get('/php', [PhpController::class, 'list'])->middleware('ability:php-view');
+    Route::post('/php/install', [PhpController::class, 'install'])->middleware('ability:php-manage');
+    Route::delete('/php/{version}', [PhpController::class, 'remove'])->middleware('ability:php-manage')
+        ->where('version', '[0-9]+\\.[0-9]+');
+
+    // SSH keys — cipi user (Cipi CLI ≥ 5.0.6)
+    Route::get('/ssh/keys', [SshController::class, 'list'])->middleware('ability:ssh-view');
+    Route::post('/ssh/keys', [SshController::class, 'add'])->middleware('ability:ssh-manage');
+    Route::delete('/ssh/keys/{n}', [SshController::class, 'remove'])->middleware('ability:ssh-manage')
+        ->where('n', '[0-9]+');
+
+    // System services (Cipi CLI ≥ 5.0.6)
+    Route::get('/services', [ServiceController::class, 'list'])->middleware('ability:services-view');
+    Route::post('/services/{name}/restart', [ServiceController::class, 'restart'])
+        ->middleware('ability:services-manage')
+        ->where('name', '[a-z0-9.-]+');
+
+    // SMTP notifications (Cipi CLI ≥ 5.0.7)
+    Route::get('/smtp', [SmtpController::class, 'show'])->middleware('ability:smtp-view');
+    Route::put('/smtp', [SmtpController::class, 'update'])->middleware('ability:smtp-manage');
+    Route::post('/smtp/enable', [SmtpController::class, 'enable'])->middleware('ability:smtp-manage');
+    Route::post('/smtp/disable', [SmtpController::class, 'disable'])->middleware('ability:smtp-manage');
+    Route::post('/smtp/test', [SmtpController::class, 'test'])->middleware('ability:smtp-manage');
+    Route::delete('/smtp', [SmtpController::class, 'destroy'])->middleware('ability:smtp-manage');
+
+    // App HTTP healthchecks (Cipi CLI ≥ 5.0.7 for --json)
+    Route::get('/health', [HealthController::class, 'list'])->middleware('ability:health-view');
+    Route::get('/apps/{name}/health', [HealthController::class, 'show'])->middleware('ability:health-view');
+    Route::put('/apps/{name}/health', [HealthController::class, 'update'])->middleware('ability:health-manage');
+    Route::delete('/apps/{name}/health', [HealthController::class, 'destroy'])->middleware('ability:health-manage');
+    Route::post('/apps/{name}/health/check', [HealthController::class, 'check'])->middleware('ability:health-view');
+
     // Jobs
     Route::get('/jobs/{id}', [JobController::class, 'show']);
 
     // Server
     Route::get('/status', [StatusController::class, 'show'])->middleware('ability:status-view');
+
+    // API client IP whitelist (Cipi CLI ≥ 5.0.8) — default * = allow all
+    Route::get('/ip-whitelist', [IpWhitelistController::class, 'show'])->middleware('ability:ip-whitelist-view');
+    Route::put('/ip-whitelist', [IpWhitelistController::class, 'update'])->middleware('ability:ip-whitelist-manage');
+    Route::post('/ip-whitelist', [IpWhitelistController::class, 'add'])->middleware('ability:ip-whitelist-manage');
+    Route::delete('/ip-whitelist', [IpWhitelistController::class, 'remove'])->middleware('ability:ip-whitelist-manage');
+    Route::post('/ip-whitelist/allow-all', [IpWhitelistController::class, 'allowAll'])->middleware('ability:ip-whitelist-manage');
 });

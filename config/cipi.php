@@ -3,7 +3,11 @@
 return [
     'apps_json' => env('CIPI_APPS_JSON', '/etc/cipi/apps.json'),
 
-    'php_versions' => ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5'],
+    // Client IP allowlist for API + MCP (Cipi CLI ≥ 5.0.8). "*" or missing file = allow all.
+    'ip_whitelist_file' => env('CIPI_API_IP_WHITELIST', '/etc/cipi/api-ip-whitelist'),
+
+    // Installable / assignable PHP versions (Cipi CLI ≥ 4.5.4 — Deployer 8 requires ≥ 8.3).
+    'php_versions' => ['8.3', '8.4', '8.5'],
 
     /*
     | Canonical REST token abilities (ability => description).
@@ -12,7 +16,7 @@ return [
     'token_abilities' => [
         'apps-view' => 'Read apps',
         'apps-create' => 'Create apps',
-        'apps-edit' => 'Edit apps',
+        'apps-edit' => 'Edit apps (includes webhook recreate)',
         'apps-delete' => 'Delete apps',
         'apps-suspend' => 'Suspend / unsuspend apps',
         'apps-basicauth' => 'HTTP Basic Auth',
@@ -30,8 +34,20 @@ return [
         'dbs-view' => 'List databases',
         'dbs-create' => 'Create databases',
         'dbs-delete' => 'Delete databases',
-        'dbs-manage' => 'Backup, restore, DB password',
+        'dbs-manage' => 'Backup, restore, DB password, install/set default engines',
+        'php-view' => 'List installed PHP versions',
+        'php-manage' => 'Install / remove PHP versions',
+        'ssh-view' => 'List SSH keys (cipi user)',
+        'ssh-manage' => 'Add / remove SSH keys (cipi user)',
+        'services-view' => 'List system services',
+        'services-manage' => 'Restart system services',
+        'smtp-view' => 'View SMTP notification settings',
+        'smtp-manage' => 'Configure SMTP, test, enable/disable',
+        'health-view' => 'View app HTTP healthchecks',
+        'health-manage' => 'Set / unset / run app HTTP healthchecks',
         'status-view' => 'Server status',
+        'ip-whitelist-view' => 'View API IP whitelist',
+        'ip-whitelist-manage' => 'Manage API IP whitelist',
         'mcp-access' => 'MCP server',
     ],
 

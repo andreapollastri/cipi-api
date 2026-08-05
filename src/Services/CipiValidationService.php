@@ -106,6 +106,63 @@ class CipiValidationService
     }
 
     /**
+     * Whether a PHP version appears installed on this host (binary or FPM tree).
+     */
+    public function isPhpInstalled(string $version): bool
+    {
+        if (! preg_match('/^\d+\.\d+$/', $version)) {
+            return false;
+        }
+
+        return is_file("/usr/bin/php{$version}") || is_dir("/etc/php/{$version}");
+    }
+
+    public function phpInstalledError(?string $version): ?string
+    {
+        if ($version === null || $version === '') {
+            return null;
+        }
+        if ($err = $this->phpVersionError($version)) {
+            return $err;
+        }
+        if (! $this->isPhpInstalled($version)) {
+            return "PHP {$version} is not installed on this server. Install it first (cipi php install {$version}).";
+        }
+
+        return null;
+    }
+
+    /**
+     * Drop edit fields that match the current app state (avoids no-op CLI side effects).
+     *
+     * @param  array<string, mixed>  $fields
+     * @return array<string, string>
+     */
+    public function filterUnchangedAppEditFields(string $name, array $fields): array
+    {
+        $apps = $this->getApps();
+        $current = $apps[$name] ?? [];
+        $out = [];
+
+        foreach ($fields as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $value = is_string($value) ? trim($value) : (string) $value;
+            if ($value === '') {
+                continue;
+            }
+            $cur = trim((string) ($current[$key] ?? ''));
+            if ($value === $cur) {
+                continue;
+            }
+            $out[$key] = $value;
+        }
+
+        return $out;
+    }
+
+    /**
      * Returns the app name using this domain, or null if free.
      */
     public function domainUsedBy(string $domain, ?string $excludeApp = null): ?string

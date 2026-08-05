@@ -31,6 +31,7 @@ use CipiApi\Mcp\Tools\AppRunCommandsTool;
 use CipiApi\Mcp\Tools\AppRunTool;
 use CipiApi\Mcp\Tools\AppSuspendTool;
 use CipiApi\Mcp\Tools\AppUnsuspendTool;
+use CipiApi\Mcp\Tools\AppWebhookRecreateTool;
 use CipiApi\Mcp\Tools\DbBackupTool;
 use CipiApi\Mcp\Tools\DbCreateTool;
 use CipiApi\Mcp\Tools\DbDeleteTool;
@@ -38,7 +39,9 @@ use CipiApi\Mcp\Tools\DbEnginesTool;
 use CipiApi\Mcp\Tools\DbListTool;
 use CipiApi\Mcp\Tools\DbPasswordTool;
 use CipiApi\Mcp\Tools\DbRestoreTool;
+use CipiApi\Mcp\Tools\IpWhitelistShowTool;
 use CipiApi\Mcp\Tools\JobShowTool;
+use CipiApi\Mcp\Tools\PhpListTool;
 use CipiApi\Mcp\Tools\ServerStatusTool;
 use CipiApi\Mcp\Tools\ServiceListTool;
 use CipiApi\Mcp\Tools\SslForceTool;
@@ -82,6 +85,7 @@ class CipiServer extends Server
         AppAuthJsonDeleteTool::class,
         AppCreateTool::class,
         AppEditTool::class,
+        AppWebhookRecreateTool::class,
         AppDeleteTool::class,
         AppDeployTool::class,
         AppDeployRollbackTool::class,
@@ -113,5 +117,7 @@ class CipiServer extends Server
         ApiLogShowTool::class,
         ServerStatusTool::class,
         ServiceListTool::class,
+        PhpListTool::class,
+        IpWhitelistShowTool::class,
     ];
 }

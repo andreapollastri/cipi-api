@@ -165,6 +165,63 @@ class DbController extends Controller
     }
 
     /**
+     * Install a database engine (async). Requires Cipi CLI ≥ 5.0.6 sudoers.
+     */
+    public function installEngine(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'engine' => 'required|string',
+        ]);
+
+        if ($err = $this->validator->engineError($validated['engine'])) {
+            return response()->json(['error' => $err], 422);
+        }
+
+        $engine = $this->validator->normalizeEngine($validated['engine']);
+        $job = $this->jobs->dispatch(
+            'db-install',
+            'db install ' . escapeshellarg($engine),
+            ['engine' => $engine],
+        );
+
+        return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
+    }
+
+    /**
+     * Set the server-wide default database engine (sync).
+     */
+    public function setDefault(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'engine' => 'required|string',
+        ]);
+
+        if ($err = $this->validator->engineError($validated['engine'])) {
+            return response()->json(['error' => $err], 422);
+        }
+
+        $engine = $this->validator->normalizeEngine($validated['engine']);
+        $cli = app(\CipiApi\Services\CipiCliService::class);
+        $result = $cli->run('db default ' . escapeshellarg($engine));
+        if ($result['exit_code'] !== 0) {
+            $detail = trim($result['output'] ?? '');
+
+            return response()->json([
+                'error' => $detail !== '' ? $detail : 'Failed to set default database engine',
+            ], 422);
+        }
+
+        try {
+            return response()->json(['data' => $this->dbEnginesCli->list()], 200);
+        } catch (MysqlDatabaseListingUnavailableException $e) {
+            return response()->json([
+                'data' => ['default' => $engine, 'engines' => []],
+                'message' => 'Default engine updated',
+            ], 200);
+        }
+    }
+
+    /**
      * @return string|null|JsonResponse Normalized engine, null when omitted, or 422 response.
      */
     protected function resolveEngineFromRequest(Request $request): string|null|JsonResponse

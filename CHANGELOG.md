@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.0] - 2026-08-05
+
+API client IP whitelist. Requires **Cipi CLI ≥ 5.0.8** (`cipi self-update`) for `cipi api ip-whitelist` and sudoers.
+
+### Added
+
+- **IP whitelist middleware** — `cipi.ip` on `api/*` and `/mcp`. Reads `/etc/cipi/api-ip-whitelist` (`CIPI_API_IP_WHITELIST`). Missing file or `*` = allow all; otherwise IPv4/IPv6/CIDR. Rejected clients get `403` `{ "error": "IP not allowed", "ip": "…" }`.
+- **REST** — `GET /api/ip-whitelist`, `PUT /api/ip-whitelist` (`entries`, optional `ensure_client_ip`), `POST /api/ip-whitelist` (`ip`), `DELETE /api/ip-whitelist` (`ip`), `POST /api/ip-whitelist/allow-all`. Abilities `ip-whitelist-view` / `ip-whitelist-manage`. PUT auto-adds the caller IP when restricting (unless `ensure_client_ip: false`).
+- **MCP** — `IpWhitelistShow`.
+- **OpenAPI** — `info.version` **1.17.0**.
+
+## [1.16.0] - 2026-08-05
+
+SMTP notifications + per-app HTTP healthchecks. Requires **Cipi CLI ≥ 5.0.7** (`cipi self-update`) for non-interactive SMTP flags / `--json` and sudoers.
+
+### Added
+
+- **SMTP** — `GET|PUT|DELETE /api/smtp`, `POST /api/smtp/enable|disable|test` (abilities `smtp-view` / `smtp-manage`). Password never returned on GET.
+- **Healthchecks** — `GET /api/health`, `GET|PUT|DELETE /api/apps/{name}/health`, `POST /api/apps/{name}/health/check` (abilities `health-view` / `health-manage`).
+- **OpenAPI** — `info.version` **1.16.0**.
+
+## [1.15.0] - 2026-08-05
+
+Server management + safer app edit. Requires **Cipi CLI ≥ 5.0.6** (`cipi self-update`) for webhook recreate, PHP/SSH/service JSON listings, and updated API sudoers.
+
+### Added
+
+- **`POST /api/apps/{name}/webhook/recreate`** — recreate GitHub/GitLab webhook; body `{ "rotate_secret": true }` also rotates `CIPI_WEBHOOK_TOKEN`. Async job (`app-webhook-recreate`). Ability `apps-edit`.
+- **PHP** — `GET /api/php`, `POST /api/php/install`, `DELETE /api/php/{version}` (abilities `php-view` / `php-manage`).
+- **DB engines** — `POST /api/dbs/engines/install`, `PUT /api/dbs/engines/default` (ability `dbs-manage`).
+- **SSH keys** — `GET|POST /api/ssh/keys`, `DELETE /api/ssh/keys/{n}` (abilities `ssh-view` / `ssh-manage`).
+- **Services** — `GET /api/services`, `POST /api/services/{name}/restart` (abilities `services-view` / `services-manage`).
+- **MCP** — `AppWebhookRecreate`, `PhpList`.
+
+### Changed
+
+- **`PUT /api/apps/{name}`** — only forwards fields that differ from the current app (prevents no-op webhook/deploy-key recreation); PHP must be installed on the host (422 otherwise).
+- **PHP allowlist** — installable versions tightened to `8.3`, `8.4`, `8.5` (matches Cipi CLI / Deployer 8).
+- **OpenAPI** — `info.version` **1.15.0**.
+
 ## [1.14.0] - 2026-08-05
 
 App `.env` / `auth.json` / Artisan, whitelisted `app run`, and structured deploy config. Requires **Cipi CLI ≥ 5.0.3** (`cipi self-update`) for non-interactive flags and sudoers whitelist (`app env`, `app artisan`, `app run`, `auth *`, deploy-config).

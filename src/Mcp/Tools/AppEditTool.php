@@ -30,17 +30,17 @@ class AppEditTool extends Tool
             return Response::text("Error: App '{$name}' not found");
         }
 
-        $params = array_filter([
+        $params = $this->validator->filterUnchangedAppEditFields($name, array_filter([
             'php' => $request->get('php'),
             'branch' => $request->get('branch'),
             'repository' => $request->get('repository'),
             'domain' => $request->get('domain'),
-        ]);
+        ], fn ($v) => $v !== null && $v !== ''));
         if (empty($params)) {
-            return Response::text('Error: Nothing to change. Provide php, branch, repository, or domain.');
+            return Response::text('Error: Nothing to change. Provide a different php, branch, repository, or domain.');
         }
         if (isset($params['php'])) {
-            if ($err = $this->validator->phpVersionError($params['php'])) {
+            if ($err = $this->validator->phpInstalledError($params['php'])) {
                 return Response::text("Error: {$err}");
             }
         }

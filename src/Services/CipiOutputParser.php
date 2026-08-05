@@ -11,6 +11,7 @@ class CipiOutputParser
         $result = match ($type) {
             'app-create' => $this->parseAppCreate($plain),
             'app-edit' => $this->parseAppEdit($plain),
+            'app-webhook-recreate' => $this->parseAppWebhookRecreate($plain),
             'app-delete' => $this->parseAppDelete($plain),
             'app-suspend' => $this->parseAppSuspend($plain),
             'app-unsuspend' => $this->parseAppUnsuspend($plain),
@@ -34,6 +35,10 @@ class CipiOutputParser
             'db-backup' => $this->parseDbBackup($plain),
             'db-restore' => $this->parseDbRestore($plain),
             'db-password' => $this->parseDbPassword($plain),
+            'db-install' => $this->parseDbInstall($plain),
+            'php-install' => $this->parsePhpInstall($plain),
+            'php-remove' => $this->parsePhpRemove($plain),
+            'service-restart' => $this->parseServiceRestart($plain),
             'basicauth-enable' => $this->parseBasicAuthEnable($plain),
             'basicauth-disable' => $this->parseBasicAuthDisable($plain),
             'basicauth-status' => $this->parseBasicAuthStatus($plain),
@@ -145,6 +150,72 @@ class CipiOutputParser
             return ['changes' => [], 'message' => 'Nothing changed'];
         }
         return ! empty($changes) ? ['changes' => $changes] : null;
+    }
+
+    protected function parseAppWebhookRecreate(string $text): ?array
+    {
+        $url = $this->extractLabel($text, 'WEBHOOK_URL:');
+        $token = $this->extractLabel($text, 'WEBHOOK_TOKEN:');
+        $id = $this->extractLabel($text, 'WEBHOOK_ID:');
+        $rotated = $this->extractLabel($text, 'WEBHOOK_ROTATED:');
+
+        if ($url === null && $token === null && ! str_contains($text, 'Webhook recreated')) {
+            return null;
+        }
+
+        return array_filter([
+            'webhook_url' => $url,
+            'webhook_token' => $token,
+            'webhook_id' => $id,
+            'rotated' => $rotated === 'true' || $rotated === '1',
+            'recreated' => true,
+        ], fn ($v) => $v !== null);
+    }
+
+    protected function parseDbInstall(string $text): ?array
+    {
+        if (preg_match('/(MariaDB|PostgreSQL)\s+installed/i', $text, $m)) {
+            return ['engine' => str_contains(strtolower($m[1]), 'postgre') ? 'pgsql' : 'mariadb', 'installed' => true];
+        }
+        if (preg_match('/already installed/i', $text)) {
+            return ['installed' => true, 'message' => 'Already installed'];
+        }
+
+        return null;
+    }
+
+    protected function parsePhpInstall(string $text): ?array
+    {
+        if (preg_match('/PHP\s+(\d+\.\d+)\s+installed/i', $text, $m)) {
+            return ['version' => $m[1], 'installed' => true];
+        }
+        if (preg_match('/PHP\s+(\d+\.\d+)\s+already installed/i', $text, $m)) {
+            return ['version' => $m[1], 'installed' => true, 'message' => 'Already installed'];
+        }
+
+        return null;
+    }
+
+    protected function parsePhpRemove(string $text): ?array
+    {
+        if (preg_match('/PHP\s+(\d+\.\d+)\s+removed/i', $text, $m)) {
+            return ['version' => $m[1], 'removed' => true];
+        }
+
+        return null;
+    }
+
+    protected function parseServiceRestart(string $text): ?array
+    {
+        $restarted = [];
+        if (preg_match_all('/✓\s+(\S+)\s+(?:restarted|reloaded)/i', $text, $m)) {
+            $restarted = $m[1];
+        }
+        if ($restarted === [] && preg_match('/(\S+)\s+(?:restarted|reloaded)/i', $text, $m)) {
+            $restarted = [$m[1]];
+        }
+
+        return $restarted !== [] ? ['restarted' => array_values($restarted)] : null;
     }
 
     protected function parseAppDelete(string $text): ?array

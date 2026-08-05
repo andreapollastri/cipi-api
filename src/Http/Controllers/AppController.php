@@ -94,7 +94,7 @@ class AppController extends Controller
         if ($err = $this->validator->domainError($validated['domain'])) {
             return response()->json(['error' => $err], 422);
         }
-        if ($err = $this->validator->phpVersionError($validated['php'] ?? null)) {
+        if ($err = $this->validator->phpInstalledError($validated['php'] ?? null)) {
             return response()->json(['error' => $err], 422);
         }
         if ($err = $this->validator->engineError($validated['engine'] ?? null)) {
@@ -164,13 +164,13 @@ class AppController extends Controller
             'domain' => 'nullable|string',
         ]);
 
-        $filtered = array_filter($validated, fn ($v) => $v !== null && $v !== '');
+        $filtered = $this->validator->filterUnchangedAppEditFields($name, $validated);
         if (empty($filtered)) {
-            return response()->json(['error' => 'Nothing to change. Provide php, branch, repository, or domain.'], 422);
+            return response()->json(['error' => 'Nothing to change. Provide a different php, branch, repository, or domain.'], 422);
         }
 
         if (isset($filtered['php'])) {
-            if ($err = $this->validator->phpVersionError($filtered['php'])) {
+            if ($err = $this->validator->phpInstalledError($filtered['php'])) {
                 return response()->json(['error' => $err], 422);
             }
         }
@@ -190,6 +190,34 @@ class AppController extends Controller
         }
 
         $job = $this->jobs->dispatch('app-edit', implode(' ', $args), ['app' => $name] + $filtered);
+        return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
+    }
+
+    /**
+     * Recreate the GitHub/GitLab webhook (optionally rotate CIPI_WEBHOOK_TOKEN).
+     * Requires Cipi CLI ≥ 5.0.6.
+     */
+    public function webhookRecreate(Request $request, string $name): JsonResponse
+    {
+        if (! $this->validator->appExists($name)) {
+            return response()->json(['error' => "App '{$name}' not found"], 404);
+        }
+
+        $validated = $request->validate([
+            'rotate_secret' => 'sometimes|boolean',
+        ]);
+
+        $rotate = (bool) ($validated['rotate_secret'] ?? false);
+        $command = 'app webhook recreate ' . escapeshellarg($name);
+        if ($rotate) {
+            $command .= ' --rotate-secret';
+        }
+
+        $job = $this->jobs->dispatch('app-webhook-recreate', $command, [
+            'app' => $name,
+            'rotate_secret' => $rotate,
+        ]);
+
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
 

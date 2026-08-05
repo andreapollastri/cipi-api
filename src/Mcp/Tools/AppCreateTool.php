@@ -53,7 +53,7 @@ class AppCreateTool extends Tool
         if ($err = $this->validator->domainError($domain ?? '')) {
             return Response::text("Error: {$err}");
         }
-        if ($err = $this->validator->phpVersionError($php)) {
+        if ($err = $this->validator->phpInstalledError($php)) {
             return Response::text("Error: {$err}");
         }
         if ($err = $this->validator->engineError($engine)) {
