@@ -94,6 +94,7 @@ Route::prefix('api')->middleware(['cipi.ip', 'auth:sanctum'])->group(function ()
     // PHP versions (Cipi CLI ≥ 5.0.6)
     Route::get('/php', [PhpController::class, 'list'])->middleware('ability:php-view');
     Route::post('/php/install', [PhpController::class, 'install'])->middleware('ability:php-manage');
+    Route::put('/php/default', [PhpController::class, 'setDefault'])->middleware('ability:php-manage');
     Route::delete('/php/{version}', [PhpController::class, 'remove'])->middleware('ability:php-manage')
         ->where('version', '[0-9]+\\.[0-9]+');
 

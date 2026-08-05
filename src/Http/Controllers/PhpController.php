@@ -74,4 +74,37 @@ class PhpController extends Controller
 
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
+
+    /**
+     * Set the system default PHP version (sync).
+     */
+    public function setDefault(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'version' => 'required|string',
+        ]);
+
+        $version = $validated['version'];
+        if ($err = $this->validator->phpVersionError($version)) {
+            return response()->json(['error' => $err], 422);
+        }
+        if (! $this->validator->isPhpInstalled($version)) {
+            return response()->json(['error' => "PHP {$version} is not installed"], 404);
+        }
+
+        try {
+            $this->phpCli->switch($version);
+        } catch (MysqlDatabaseListingUnavailableException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        try {
+            return response()->json(['data' => $this->phpCli->list()], 200);
+        } catch (MysqlDatabaseListingUnavailableException $e) {
+            return response()->json([
+                'data' => ['default' => $version, 'installable' => [], 'versions' => []],
+                'message' => 'Default PHP updated',
+            ], 200);
+        }
+    }
 }

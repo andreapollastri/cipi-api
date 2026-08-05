@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.0] - 2026-08-06
+
+### Added
+
+- **`PUT /api/php/default`** — set the system default PHP version (sync; wraps `cipi php switch`). Body `{ "version": "8.5" }`. Returns updated `GET /api/php` payload. Ability `php-manage`.
+
+### Changed
+
+- **OpenAPI** — `info.version` **1.17.0**.
+
 ## [1.16.0] - 2026-08-06
 
 ### Fixed

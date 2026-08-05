@@ -57,4 +57,20 @@ class CipiPhpCliService
             'versions' => $versions,
         ];
     }
+
+    /**
+     * Switch the system default PHP version (sync — wraps `cipi php switch`).
+     *
+     * @throws MysqlDatabaseListingUnavailableException
+     */
+    public function switch(string $version): void
+    {
+        $result = $this->cli->run('php switch ' . escapeshellarg($version));
+        if ($result['exit_code'] !== 0) {
+            $detail = trim($result['output'] ?? '');
+            $msg = $detail !== '' ? $detail : ('cipi php switch exited with code ' . $result['exit_code']);
+
+            throw new MysqlDatabaseListingUnavailableException($msg);
+        }
+    }
 }
