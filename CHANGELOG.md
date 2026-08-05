@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.18.0] - 2026-08-06
+
+### Fixed
+
+- **`PUT /api/php/default`** — `php switch` was missing from `CipiCliService::ALLOWED_COMMANDS`, so the endpoint always failed with `Command not allowed: php switch '…'`.
+
+### Changed
+
+- **OpenAPI** — `info.version` **1.18.0**.
+
 ## [1.17.0] - 2026-08-06
 
 ### Added

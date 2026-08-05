@@ -49,6 +49,7 @@ class CipiCliService
         'php list',
         'php install',
         'php remove',
+        'php switch',
         'ssh list',
         'ssh add',
         'ssh remove',
