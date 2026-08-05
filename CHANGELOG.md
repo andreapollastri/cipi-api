@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- **`PUT /api/php/default`** — `php switch` was missing from `CipiCliService::ALLOWED_COMMANDS`, so the endpoint always failed with `Command not allowed: php switch '…'`.
+- **`PUT /api/php/default`** — `php switch` was missing from `CipiCliService::ALLOWED_COMMANDS`, so the endpoint always failed with `Command not allowed: php switch '…'`. Requires **Cipi CLI ≥ 5.0.9** (`cipi self-update`) so `/etc/sudoers.d/cipi-api` allows `php switch` (otherwise sudo asks for a password without a TTY).
 
 ### Changed
 
