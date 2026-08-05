@@ -107,6 +107,12 @@ class CipiValidationService
 
     /**
      * Whether a PHP version appears installed on this host (binary or FPM tree).
+     *
+     * Must stay open_basedir-safe: the API FPM pool only allows the app root,
+     * /tmp, /etc/cipi, /proc, /usr/local/bin — not /usr/bin or /etc/php.
+     * Bare is_file()/is_dir() on those paths emit E_WARNING which Laravel
+     * converts to ErrorException → HTTP 500 "Server Error" on
+     * POST /api/php/install and app create/edit PHP checks.
      */
     public function isPhpInstalled(string $version): bool
     {
@@ -114,7 +120,50 @@ class CipiValidationService
             return false;
         }
 
-        return is_file("/usr/bin/php{$version}") || is_dir("/etc/php/{$version}");
+        $bin = "/usr/bin/php{$version}";
+        $dir = "/etc/php/{$version}";
+
+        if ($this->pathWithinOpenBasedir($bin) && @is_file($bin)) {
+            return true;
+        }
+        if ($this->pathWithinOpenBasedir($dir) && @is_dir($dir)) {
+            return true;
+        }
+
+        // Shell test is not subject to PHP open_basedir (API FPM pool).
+        $output = [];
+        $code = 1;
+        @exec(
+            'test -e ' . escapeshellarg($bin) . ' -o -d ' . escapeshellarg($dir),
+            $output,
+            $code,
+        );
+
+        return $code === 0;
+    }
+
+    /**
+     * Whether PHP may stat/read {@see $path} without triggering open_basedir errors.
+     */
+    protected function pathWithinOpenBasedir(string $path): bool
+    {
+        $basedir = ini_get('open_basedir');
+        if (! is_string($basedir) || $basedir === '') {
+            return true;
+        }
+
+        $path = str_replace('\\', '/', $path);
+        foreach (explode(PATH_SEPARATOR, $basedir) as $allowed) {
+            $allowed = rtrim(str_replace('\\', '/', $allowed), '/');
+            if ($allowed === '') {
+                continue;
+            }
+            if ($path === $allowed || str_starts_with($path, $allowed . '/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function phpInstalledError(?string $version): ?string

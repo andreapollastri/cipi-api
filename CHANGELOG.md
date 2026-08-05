@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.0] - 2026-08-06
+
+### Fixed
+
+- **`POST /api/php/install` / `DELETE /api/php/{version}` / app PHP checks** — `CipiValidationService::isPhpInstalled()` no longer calls `is_file()` / `is_dir()` on `/usr/bin` or `/etc/php` under the API FPM `open_basedir` (those paths are outside the allowlist). Laravel turned the resulting warnings into `ErrorException`, so the GUI showed a bare **Server Error**. Detection now skips host stats outside the basedir and falls back to a shell `test`.
+
 ## [1.15.0] - 2026-08-05
 
 Server management, SMTP/healthchecks, IP whitelist, and safer app edit. Requires **Cipi CLI ≥ 5.0.6** (`cipi self-update`) for webhook recreate, PHP/SSH/service JSON listings, SMTP `--json`, `cipi api ip-whitelist`, and updated API sudoers.
