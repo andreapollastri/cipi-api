@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.19.1] - 2026-08-06
+
+### Fixed
+
+- **`GET /api/dbs/engines`** — treat CLI em dash / `not_installed` status as absent (Cipi ≥ 5.0.14 prints `not_installed`; older builds used `—`).
+- **`GET /api/status` host fallback** — PostgreSQL unit detection uses `systemctl cat` instead of `list-unit-files --quiet` (which always exits 0).
+
+### Changed
+
+- **OpenAPI** — `info.version` **1.19.1**.
+
 ## [1.19.0] - 2026-08-06
 
 ### Removed

@@ -478,9 +478,15 @@ class CipiOutputParser
             if (preg_match('/^(mariadb|pgsql)\s+(\S+)\s+(\S+)(?:\s+(\*))?/i', $line, $m)) {
                 $isDefault = ($m[4] ?? '') === '*';
                 $port = is_numeric($m[3]) ? (int) $m[3] : null;
+                // CLI used to print an em dash for missing engines; accept ASCII
+                // `not_installed` (Cipi ≥ 5.0.14) and legacy dash placeholders.
+                $rawStatus = strtolower($m[2]);
+                $missing = in_array($rawStatus, ['not_installed', 'missing', 'absent', '-', '—', '–'], true)
+                    || in_array($m[2], ['—', '–'], true);
+                $status = $missing ? 'not_installed' : $rawStatus;
                 $engines[] = [
                     'engine' => strtolower($m[1]),
-                    'status' => $m[2] === '—' ? 'not_installed' : strtolower($m[2]),
+                    'status' => $status,
                     'port' => $port,
                     'default' => $isDefault,
                 ];

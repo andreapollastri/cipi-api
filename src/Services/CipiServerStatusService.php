@@ -255,9 +255,10 @@ class CipiServerStatusService
 
     protected function serviceUnitExists(string $unit): bool
     {
+        // `systemctl list-unit-files --quiet` exits 0 even when zero units match.
         $output = [];
         $code = 1;
-        @exec('systemctl list-unit-files --quiet ' . escapeshellarg($unit . '.service') . ' 2>/dev/null', $output, $code);
+        @exec('systemctl cat ' . escapeshellarg($unit . '.service') . ' 2>/dev/null', $output, $code);
 
         return $code === 0;
     }
