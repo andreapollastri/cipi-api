@@ -34,7 +34,6 @@ use CipiApi\Mcp\Tools\AppUnsuspendTool;
 use CipiApi\Mcp\Tools\AppWebhookRecreateTool;
 use CipiApi\Mcp\Tools\DbBackupTool;
 use CipiApi\Mcp\Tools\DbCreateTool;
-use CipiApi\Mcp\Tools\DbDeleteTool;
 use CipiApi\Mcp\Tools\DbEnginesTool;
 use CipiApi\Mcp\Tools\DbListTool;
 use CipiApi\Mcp\Tools\DbPasswordTool;
@@ -106,7 +105,6 @@ class CipiServer extends Server
         DbEnginesTool::class,
         DbListTool::class,
         DbCreateTool::class,
-        DbDeleteTool::class,
         DbBackupTool::class,
         DbRestoreTool::class,
         DbPasswordTool::class,

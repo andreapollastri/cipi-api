@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.19.0] - 2026-08-06
+
+### Removed
+
+- **`PUT /api/php/default`** — system default PHP switch (`cipi php switch`) removed from the API. Use the CLI on the host if needed.
+- **`DELETE /api/php/{version}`** — PHP version removal removed from the API. Use the CLI on the host if needed.
+- **`DELETE /api/dbs/{name}`** — database deletion (and MCP `DbDelete`) removed from the API. Use the CLI on the host if needed.
+- **`PUT /api/dbs/engines/default`** — set default database engine removed from the API. Use the CLI on the host if needed.
+- Token ability **`dbs-delete`** removed.
+
+### Changed
+
+- **OpenAPI** — `info.version` **1.19.0**.
+- Token abilities — `php-manage` is install-only; `dbs-manage` no longer covers setting the default engine.
+
 ## [1.18.0] - 2026-08-06
 
 ### Fixed

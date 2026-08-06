@@ -151,7 +151,6 @@ Once connected, the following tools are available to the AI agent:
 | `DbEngines`         | List installed DB engines and default (Cipi 4.8+)     |
 | `DbList`            | List databases (optional `engine` filter)             |
 | `DbCreate`          | Create a database (`engine` = mariadb\|pgsql)         |
-| `DbDelete`          | Permanently delete a database                         |
 | `DbBackup`          | Create a compressed backup of a database              |
 | `DbRestore`         | Restore a database from a backup file                 |
 | `DbPassword`        | Regenerate database password                          |

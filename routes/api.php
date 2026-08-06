@@ -83,10 +83,8 @@ Route::prefix('api')->middleware(['cipi.ip', 'auth:sanctum'])->group(function ()
     // Databases
     Route::get('/dbs/engines', [DbController::class, 'engines'])->middleware('ability:dbs-view');
     Route::post('/dbs/engines/install', [DbController::class, 'installEngine'])->middleware('ability:dbs-manage');
-    Route::put('/dbs/engines/default', [DbController::class, 'setDefault'])->middleware('ability:dbs-manage');
     Route::get('/dbs', [DbController::class, 'list'])->middleware('ability:dbs-view');
     Route::post('/dbs', [DbController::class, 'create'])->middleware('ability:dbs-create');
-    Route::delete('/dbs/{name}', [DbController::class, 'delete'])->middleware('ability:dbs-delete');
     Route::post('/dbs/{name}/backup', [DbController::class, 'backup'])->middleware('ability:dbs-manage');
     Route::post('/dbs/{name}/restore', [DbController::class, 'restore'])->middleware('ability:dbs-manage');
     Route::post('/dbs/{name}/password', [DbController::class, 'password'])->middleware('ability:dbs-manage');
@@ -94,9 +92,6 @@ Route::prefix('api')->middleware(['cipi.ip', 'auth:sanctum'])->group(function ()
     // PHP versions (Cipi CLI ≥ 5.0.6)
     Route::get('/php', [PhpController::class, 'list'])->middleware('ability:php-view');
     Route::post('/php/install', [PhpController::class, 'install'])->middleware('ability:php-manage');
-    Route::put('/php/default', [PhpController::class, 'setDefault'])->middleware('ability:php-manage');
-    Route::delete('/php/{version}', [PhpController::class, 'remove'])->middleware('ability:php-manage')
-        ->where('version', '[0-9]+\\.[0-9]+');
 
     // SSH keys — cipi user (Cipi CLI ≥ 5.0.6)
     Route::get('/ssh/keys', [SshController::class, 'list'])->middleware('ability:ssh-view');

@@ -83,24 +83,6 @@ class DbController extends Controller
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
     }
 
-    public function delete(Request $request, string $name): JsonResponse
-    {
-        $engine = $this->resolveEngineFromRequest($request);
-        if ($engine instanceof JsonResponse) {
-            return $engine;
-        }
-
-        $params = ['name' => $name];
-        $command = 'db delete ' . escapeshellarg($name) . ' --force';
-        if ($engine !== null) {
-            $params['engine'] = $engine;
-            $command .= ' --engine=' . escapeshellarg($engine);
-        }
-        $job = $this->jobs->dispatch('db-delete', $command, $params);
-
-        return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
-    }
-
     public function backup(Request $request, string $name): JsonResponse
     {
         $engine = $this->resolveEngineFromRequest($request);
@@ -185,40 +167,6 @@ class DbController extends Controller
         );
 
         return response()->json(['job_id' => $job->id, 'status' => 'pending'], 202);
-    }
-
-    /**
-     * Set the server-wide default database engine (sync).
-     */
-    public function setDefault(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'engine' => 'required|string',
-        ]);
-
-        if ($err = $this->validator->engineError($validated['engine'])) {
-            return response()->json(['error' => $err], 422);
-        }
-
-        $engine = $this->validator->normalizeEngine($validated['engine']);
-        $cli = app(\CipiApi\Services\CipiCliService::class);
-        $result = $cli->run('db default ' . escapeshellarg($engine));
-        if ($result['exit_code'] !== 0) {
-            $detail = trim($result['output'] ?? '');
-
-            return response()->json([
-                'error' => $detail !== '' ? $detail : 'Failed to set default database engine',
-            ], 422);
-        }
-
-        try {
-            return response()->json(['data' => $this->dbEnginesCli->list()], 200);
-        } catch (MysqlDatabaseListingUnavailableException $e) {
-            return response()->json([
-                'data' => ['default' => $engine, 'engines' => []],
-                'message' => 'Default engine updated',
-            ], 200);
-        }
     }
 
     /**
